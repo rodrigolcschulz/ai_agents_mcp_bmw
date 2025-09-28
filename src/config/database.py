@@ -21,8 +21,18 @@ DATABASE_CONFIG = {
 # Create database URL
 DATABASE_URL = f"postgresql://{DATABASE_CONFIG['user']}:{DATABASE_CONFIG['password']}@{DATABASE_CONFIG['host']}:{DATABASE_CONFIG['port']}/{DATABASE_CONFIG['database']}"
 
-# Create engine
-engine = create_engine(DATABASE_URL, echo=True)
+# Create engine with encoding settings
+engine = create_engine(
+    DATABASE_URL, 
+    echo=True,
+    connect_args={
+        "client_encoding": "utf8",
+        "options": "-c client_encoding=utf8 -c timezone=America/Sao_Paulo",
+        "application_name": "ai_data_engineering"
+    },
+    pool_pre_ping=True,
+    pool_recycle=300
+)
 
 # Create session
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -41,10 +51,30 @@ def get_db():
 def test_connection():
     """Test database connection"""
     try:
-        with engine.connect() as connection:
-            result = connection.execute(text("SELECT 1"))
-            print("Database connection successful!")
-            return True
+        # Test with explicit encoding handling
+        import psycopg2
+        from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+        
+        # Direct psycopg2 connection for testing
+        conn = psycopg2.connect(
+            host=DATABASE_CONFIG['host'],
+            port=DATABASE_CONFIG['port'],
+            database=DATABASE_CONFIG['database'],
+            user=DATABASE_CONFIG['user'],
+            password=DATABASE_CONFIG['password'],
+            client_encoding='utf8'
+        )
+        
+        # Test basic query
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        print("Database connection successful!")
+        return True
+        
     except Exception as e:
         print(f"Database connection failed: {e}")
         return False

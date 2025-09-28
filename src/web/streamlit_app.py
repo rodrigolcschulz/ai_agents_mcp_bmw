@@ -16,6 +16,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from agents.sql_agent import SQLAgent
+from agents.multi_llm_agent import MultiLLMAgent
 from agents.mcp_handler import MCPHandler, MCPClient
 from database.loader import DatabaseLoader
 from config.database import test_connection
@@ -66,19 +67,20 @@ def initialize_components():
         # Check database connection
         if not test_connection():
             st.error("❌ Database connection failed. Please check your configuration.")
-            return None, None, None
+            return None, None, None, None
         
         # Initialize components
         sql_agent = SQLAgent()
+        multi_llm_agent = MultiLLMAgent()
         mcp_handler = MCPHandler(sql_agent)
         mcp_client = MCPClient(mcp_handler)
         db_loader = DatabaseLoader()
         
-        return sql_agent, mcp_client, db_loader
+        return sql_agent, multi_llm_agent, mcp_client, db_loader
         
     except Exception as e:
         st.error(f"❌ Error initializing components: {e}")
-        return None, None, None
+        return None, None, None, None
 
 def display_database_stats(db_loader):
     """Display database statistics"""
@@ -202,9 +204,9 @@ def main():
     st.markdown('<h1 class="main-header">🤖 AI Data Engineering Dashboard</h1>', unsafe_allow_html=True)
     
     # Initialize components
-    sql_agent, mcp_client, db_loader = initialize_components()
+    sql_agent, multi_llm_agent, mcp_client, db_loader = initialize_components()
     
-    if not all([sql_agent, mcp_client, db_loader]):
+    if not all([sql_agent, multi_llm_agent, mcp_client, db_loader]):
         st.stop()
     
     # Sidebar
@@ -231,6 +233,15 @@ def main():
             st.metric("Total Records", total_rows)
         except:
             st.metric("Total Records", "N/A")
+        
+        # Available AI providers
+        st.header("🤖 AI Providers")
+        try:
+            providers = multi_llm_agent.get_available_providers()
+            for provider in providers:
+                st.success(f"✅ {provider.title()}")
+        except:
+            st.info("No AI providers available")
     
     # Main content based on selected page
     if page == "🏠 Dashboard":
@@ -266,6 +277,26 @@ def main():
     elif page == "💬 AI Query":
         st.header("🤖 AI-Powered Database Query")
         
+        # AI Provider selection
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            available_providers = multi_llm_agent.get_available_providers()
+            selected_provider = st.selectbox(
+                "Select AI Provider:",
+                available_providers,
+                index=0 if available_providers else None
+            )
+        
+        with col2:
+            st.write("**Provider Info:**")
+            if selected_provider == "openai":
+                st.info("🚀 OpenAI GPT-4 - Fast and accurate")
+            elif selected_provider == "anthropic":
+                st.info("🧠 Anthropic Claude - Advanced reasoning")
+            elif selected_provider == "huggingface":
+                st.info("🤗 Hugging Face - Open source models")
+        
         # Query input
         col1, col2 = st.columns([3, 1])
         
@@ -290,33 +321,32 @@ def main():
         with col1:
             if st.button("🚀 Execute Query", type="primary"):
                 if user_query:
-                    with st.spinner("Processing your query..."):
-                        # Process query asynchronously
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-                        response = loop.run_until_complete(
-                            process_query(mcp_client, user_query, context)
+                    with st.spinner(f"Processing your query with {selected_provider}..."):
+                        # Use multi-LLM agent with selected provider
+                        result = multi_llm_agent.query_database(
+                            user_query, 
+                            provider=selected_provider, 
+                            context=context
                         )
-                        loop.close()
                         
                         # Display results
-                        if response.get('success'):
-                            st.success("✅ Query executed successfully!")
+                        if result.get('success'):
+                            st.success(f"✅ Query executed successfully with {result.get('provider_used', 'unknown')}!")
                             
                             # Display SQL query
-                            if response['data'].get('sql_query'):
+                            if result.get('sql_query'):
                                 st.subheader("🔍 Generated SQL Query")
-                                st.code(response['data']['sql_query'], language='sql')
+                                st.code(result['sql_query'], language='sql')
                             
                             # Display explanation
-                            if response['data'].get('explanation'):
+                            if result.get('explanation'):
                                 st.subheader("💡 Explanation")
-                                st.write(response['data']['explanation'])
+                                st.write(result['explanation'])
                             
                             # Display results
-                            if response['data'].get('results'):
+                            if result.get('results'):
                                 st.subheader("📊 Results")
-                                results_df = pd.DataFrame(response['data']['results'])
+                                results_df = pd.DataFrame(result['results'])
                                 st.dataframe(results_df, use_container_width=True)
                                 
                                 # Create visualizations if possible
@@ -351,14 +381,14 @@ def main():
                             st.subheader("ℹ️ Query Information")
                             col1, col2, col3 = st.columns(3)
                             with col1:
-                                st.metric("Rows Returned", response['data'].get('row_count', 0))
+                                st.metric("Rows Returned", result.get('row_count', 0))
                             with col2:
-                                st.metric("Execution Time", f"{response['data'].get('execution_time', 0):.2f}s")
+                                st.metric("Provider Used", result.get('provider_used', 'Unknown'))
                             with col3:
-                                st.metric("Status", "Success" if response['success'] else "Failed")
+                                st.metric("Status", "Success" if result['success'] else "Failed")
                         
                         else:
-                            st.error(f"❌ Query failed: {response.get('error', 'Unknown error')}")
+                            st.error(f"❌ Query failed: {result.get('error', 'Unknown error')}")
                 else:
                     st.warning("⚠️ Please enter a query")
         

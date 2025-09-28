@@ -8,8 +8,8 @@ from typing import List, Dict, Any, Optional
 import logging
 from datetime import datetime
 
-from ..config.database import engine, Base
-from ..models.database_models import BMWSales, DataSource, QueryLog, SystemMetrics
+from config.database import engine, Base
+from models.database_models import BMWSales, DataSource, QueryLog, SystemMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -96,13 +96,13 @@ class DatabaseLoader:
                 # Map DataFrame columns to model fields
                 record = BMWSales(
                     year=row.get('year'),
-                    month=row.get('month'),
+                    month=1,  # Default month since CSV doesn't have month data
                     year_month=row.get('year_month'),
                     region=row.get('region'),
-                    country=row.get('country'),
+                    country=row.get('region'),  # Use region as country for now
                     model=row.get('model'),
-                    sales_units=row.get('sales_units'),
-                    revenue=row.get('revenue'),
+                    sales_units=row.get('sales_volume'),
+                    revenue=row.get('price_usd'),
                     total_sales=row.get('total_sales')
                 )
                 records.append(record)

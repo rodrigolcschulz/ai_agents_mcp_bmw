@@ -48,7 +48,7 @@ class SQLAgent:
         # Initialize LLM
         self.llm = ChatOpenAI(
             openai_api_key=self.openai_api_key,
-            model_name="gpt-3.5-turbo",
+            model_name="gpt-4",
             temperature=0.1
         )
         

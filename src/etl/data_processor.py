@@ -96,13 +96,16 @@ class DataProcessor:
                     pass
         
         # Create derived features
-        if 'year' in transformed_df.columns and 'month' in transformed_df.columns:
-            transformed_df['year_month'] = transformed_df['year'].astype(str) + '-' + transformed_df['month'].astype(str).str.zfill(2)
+        if 'year' in transformed_df.columns:
+            # Create year_month from year only (since month column doesn't exist)
+            transformed_df['year_month'] = transformed_df['year'].astype(str) + '-01'
         
         # Add sales metrics if sales data exists
         sales_columns = [col for col in transformed_df.columns if 'sales' in col.lower() or 'units' in col.lower()]
         if sales_columns:
-            transformed_df['total_sales'] = transformed_df[sales_columns].sum(axis=1)
+            # Convert to numeric and handle non-numeric values
+            numeric_sales = transformed_df[sales_columns].apply(pd.to_numeric, errors='coerce')
+            transformed_df['total_sales'] = numeric_sales.sum(axis=1)
         
         logger.info("BMW data transformation completed")
         return transformed_df

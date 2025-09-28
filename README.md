@@ -33,9 +33,12 @@ Este projeto demonstra uma arquitetura moderna de engenharia de dados com IA, in
 - Validação de qualidade dos dados
 - Carregamento otimizado no PostgreSQL
 
-### 🤖 Agente de IA
+### 🤖 Agente de IA Multi-LLM
 - Geração de consultas SQL a partir de linguagem natural
-- Integração com OpenAI GPT-3.5/4
+- Suporte para múltiplos provedores de IA:
+  - **OpenAI GPT-4**: Rápido e preciso
+  - **Anthropic Claude**: Raciocínio avançado
+  - **Hugging Face**: Modelos open source
 - Protocolo MCP para comunicação
 - Histórico de consultas e métricas
 
@@ -88,36 +91,6 @@ ai_data_engineering/
 ```bash
 git clone <repository-url>
 cd ai_data_engineering
-```
-
-### 2. Configure as variáveis de ambiente
-
-Copie o arquivo de exemplo e configure suas credenciais:
-
-```bash
-cp env.example .env
-```
-
-Edite o arquivo `.env` com suas credenciais:
-
-```env
-# OpenAI Configuration
-OPENAI_API_KEY=your_openai_api_key_here
-
-# Database Configuration
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_DB=ai_data_engineering
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=your_postgres_password
-
-# Kaggle Configuration
-KAGGLE_USERNAME=your_kaggle_username
-KAGGLE_KEY=your_kaggle_key
-
-# Application Configuration
-STREAMLIT_PORT=8501
-DEBUG=True
 ```
 
 ### 3. Execute com Docker Compose
@@ -179,8 +152,12 @@ streamlit run src/web/streamlit_app.py
 - Métricas de performance
 - Atividade recente
 
-### 2. Consultas com IA
+### 2. Consultas com IA Multi-LLM
 - Digite perguntas em linguagem natural
+- Escolha entre diferentes provedores de IA:
+  - **OpenAI GPT-4**: Para consultas rápidas e precisas
+  - **Anthropic Claude**: Para raciocínio complexo
+  - **Hugging Face**: Para modelos open source
 - Exemplo: "Mostre as vendas totais por ano"
 - O agente gera SQL automaticamente
 - Visualizações automáticas dos resultados
@@ -217,7 +194,7 @@ streamlit run src/web/streamlit_app.py
 
 - **postgres**: Banco de dados PostgreSQL
 - **app**: Aplicação principal (Streamlit)
-- **etl**: Serviço ETL (opcional)
+- **etl**: Serviço ETL (opcional, usa o mesmo Dockerfile)
 - **redis**: Cache Redis (opcional)
 - **nginx**: Proxy reverso (opcional)
 
@@ -232,6 +209,9 @@ docker-compose down
 
 # Rebuild e iniciar
 docker-compose up --build -d
+
+# Executar ETL
+docker-compose run --rm etl
 
 # Ver logs específicos
 docker-compose logs -f postgres
@@ -396,7 +376,8 @@ docker-compose logs postgres
 ### v1.0.0
 - Implementação inicial
 - ETL pipeline completo
-- Agente de IA com MCP
+- Agente de IA Multi-LLM com MCP
+- Suporte para OpenAI, Anthropic e Hugging Face
 - Interface web com Streamlit
 - Docker Compose
 - Documentação completa

@@ -19,7 +19,9 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA staging GRANT SELECT, INSERT, UPDATE, DELETE 
 -- Create indexes for better performance
 -- (These will be created after tables are created by the application)
 
--- Create views for common queries
+-- Create views for common queries (commented out until tables are created)
+-- These will be created after the ETL process creates the bmw_sales table
+/*
 CREATE OR REPLACE VIEW analytics.sales_summary AS
 SELECT 
     year,
@@ -57,8 +59,10 @@ SELECT
 FROM bmw_sales
 GROUP BY region, country
 ORDER BY total_revenue DESC;
+*/
 
--- Create function for data validation
+-- Create function for data validation (commented out until tables are created)
+/*
 CREATE OR REPLACE FUNCTION validate_sales_data()
 RETURNS TABLE(
     validation_type TEXT,
@@ -95,8 +99,10 @@ BEGIN
        OR (year = EXTRACT(YEAR FROM CURRENT_DATE) AND month > EXTRACT(MONTH FROM CURRENT_DATE));
 END;
 $$ LANGUAGE plpgsql;
+*/
 
--- Create function for data cleanup
+-- Create function for data cleanup (commented out until tables are created)
+/*
 CREATE OR REPLACE FUNCTION cleanup_old_logs()
 RETURNS INTEGER AS $$
 DECLARE
@@ -115,6 +121,7 @@ BEGIN
     RETURN deleted_count;
 END;
 $$ LANGUAGE plpgsql;
+*/
 
 -- Create trigger for updating timestamps
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -131,17 +138,15 @@ GRANT USAGE ON SCHEMA staging TO postgres;
 GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO postgres;
 GRANT SELECT ON ALL TABLES IN SCHEMA staging TO postgres;
 
--- Insert initial system metrics
+-- Insert initial system metrics (commented out until tables are created)
+/*
 INSERT INTO system_metrics (metric_name, metric_value, metric_unit, tags) VALUES
 ('database_initialized', 1, 'boolean', '{"timestamp": "' || CURRENT_TIMESTAMP || '"}'),
 ('tables_created', 4, 'count', '{"tables": ["bmw_sales", "data_sources", "query_logs", "system_metrics"]}'),
 ('views_created', 3, 'count', '{"views": ["sales_summary", "monthly_trends", "regional_performance"]}');
+*/
 
 -- Create comments for documentation
 COMMENT ON SCHEMA analytics IS 'Analytics views and aggregated data';
 COMMENT ON SCHEMA staging IS 'Staging area for data processing';
-COMMENT ON FUNCTION validate_sales_data() IS 'Validates data quality in bmw_sales table';
-COMMENT ON FUNCTION cleanup_old_logs() IS 'Cleans up old log entries to maintain performance';
-COMMENT ON VIEW analytics.sales_summary IS 'Aggregated sales data by various dimensions';
-COMMENT ON VIEW analytics.monthly_trends IS 'Monthly sales trends and metrics';
-COMMENT ON VIEW analytics.regional_performance IS 'Regional performance analysis';
+-- Comments for functions and views will be added after they are created
