@@ -60,7 +60,6 @@ services:
       - "8501:8501"
     volumes:
       - ./src:/app/src
-      - ./data:/app/data
       - ./logs:/app/logs
       - ./.env:/app/.env
     depends_on:
@@ -90,7 +89,6 @@ services:
       - KAGGLE_KEY=${KAGGLE_KEY}
     volumes:
       - ./src:/app/src
-      - ./data:/app/data
       - ./logs:/app/logs
       - ./.env:/app/.env
     depends_on:

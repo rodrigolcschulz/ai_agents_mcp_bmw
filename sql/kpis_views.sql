@@ -8,14 +8,14 @@ CREATE OR REPLACE VIEW analytics.kpi_annual_sales AS
 SELECT 
     year,
     COUNT(*) as total_records,
-    SUM(sales_units) as total_units_sold,
-    SUM(revenue) as total_revenue,
-    SUM(total_sales) as total_sales_value,
-    AVG(sales_units) as avg_units_per_record,
-    AVG(revenue) as avg_revenue_per_record,
+    SUM(sales_volume) as total_units_sold,
+    SUM(price_usd * sales_volume) as total_revenue,
+    SUM(price_usd * sales_volume) as total_sales_value,
+    AVG(sales_volume) as avg_units_per_record,
+    AVG(price_usd * sales_volume) as avg_revenue_per_record,
     COUNT(DISTINCT region) as regions_count,
     COUNT(DISTINCT model) as models_count,
-    COUNT(DISTINCT country) as countries_count
+    COUNT(DISTINCT region) as regions_count_yearly
 FROM bmw_sales
 GROUP BY year
 ORDER BY year;
@@ -26,16 +26,16 @@ CREATE OR REPLACE VIEW analytics.kpi_regional_performance AS
 SELECT 
     region,
     COUNT(*) as total_records,
-    SUM(sales_units) as total_units_sold,
-    SUM(revenue) as total_revenue,
-    SUM(total_sales) as total_sales_value,
-    AVG(sales_units) as avg_units_per_record,
-    AVG(revenue) as avg_revenue_per_record,
+    SUM(sales_volume) as total_units_sold,
+    SUM(price_usd * sales_volume) as total_revenue,
+    SUM(price_usd * sales_volume) as total_sales_value,
+    AVG(sales_volume) as avg_units_per_record,
+    AVG(price_usd * sales_volume) as avg_revenue_per_record,
     COUNT(DISTINCT model) as models_count,
     COUNT(DISTINCT year) as years_active,
     -- KPIs calculados
-    ROUND((SUM(sales_units) * 100.0 / SUM(SUM(sales_units)) OVER())::numeric, 2) as market_share_units_pct,
-    ROUND((SUM(revenue) * 100.0 / SUM(SUM(revenue)) OVER())::numeric, 2) as market_share_revenue_pct
+    ROUND((SUM(sales_volume) * 100.0 / SUM(SUM(sales_volume)) OVER())::numeric, 2) as market_share_units_pct,
+    ROUND((SUM(price_usd * sales_volume) * 100.0 / SUM(SUM(price_usd * sales_volume)) OVER())::numeric, 2) as market_share_revenue_pct
 FROM bmw_sales
 GROUP BY region
 ORDER BY total_revenue DESC;
@@ -46,54 +46,25 @@ CREATE OR REPLACE VIEW analytics.kpi_model_performance AS
 SELECT 
     model,
     COUNT(*) as total_records,
-    SUM(sales_units) as total_units_sold,
-    SUM(revenue) as total_revenue,
-    SUM(total_sales) as total_sales_value,
-    AVG(sales_units) as avg_units_per_record,
-    AVG(revenue) as avg_revenue_per_record,
+    SUM(sales_volume) as total_units_sold,
+    SUM(price_usd * sales_volume) as total_revenue,
+    SUM(price_usd * sales_volume) as total_sales_value,
+    AVG(sales_volume) as avg_units_per_record,
+    AVG(price_usd * sales_volume) as avg_revenue_per_record,
     COUNT(DISTINCT region) as regions_count,
     COUNT(DISTINCT year) as years_active,
     -- KPIs calculados
-    ROUND((SUM(sales_units) * 100.0 / SUM(SUM(sales_units)) OVER())::numeric, 2) as market_share_units_pct,
-    ROUND((SUM(revenue) * 100.0 / SUM(SUM(revenue)) OVER())::numeric, 2) as market_share_revenue_pct,
+    ROUND((SUM(sales_volume) * 100.0 / SUM(SUM(sales_volume)) OVER())::numeric, 2) as market_share_units_pct,
+    ROUND((SUM(price_usd * sales_volume) * 100.0 / SUM(SUM(price_usd * sales_volume)) OVER())::numeric, 2) as market_share_revenue_pct,
     -- Ranking
-    RANK() OVER (ORDER BY SUM(sales_units) DESC) as rank_by_units,
-    RANK() OVER (ORDER BY SUM(revenue) DESC) as rank_by_revenue
+    RANK() OVER (ORDER BY SUM(sales_volume) DESC) as rank_by_units,
+    RANK() OVER (ORDER BY SUM(price_usd * sales_volume) DESC) as rank_by_revenue
 FROM bmw_sales
 GROUP BY model
 ORDER BY total_revenue DESC;
 
--- 4. VIEW: Tendências Mensais
+-- 4. VIEW: Tendências Mensais (REMOVED - No monthly data available)
 -- =====================================================
-CREATE OR REPLACE VIEW analytics.kpi_monthly_trends AS
-SELECT 
-    year,
-    month,
-    COUNT(*) as total_records,
-    SUM(sales_units) as total_units_sold,
-    SUM(revenue) as total_revenue,
-    SUM(total_sales) as total_sales_value,
-    AVG(sales_units) as avg_units_per_record,
-    AVG(revenue) as avg_revenue_per_record,
-    COUNT(DISTINCT region) as regions_count,
-    COUNT(DISTINCT model) as models_count,
-    -- Crescimento mensal
-    LAG(SUM(sales_units)) OVER (ORDER BY year, month) as prev_month_units,
-    LAG(SUM(revenue)) OVER (ORDER BY year, month) as prev_month_revenue,
-    -- Cálculo de crescimento
-    CASE 
-        WHEN LAG(SUM(sales_units)) OVER (ORDER BY year, month) > 0 
-        THEN ROUND(((SUM(sales_units) - LAG(SUM(sales_units)) OVER (ORDER BY year, month)) * 100.0 / LAG(SUM(sales_units)) OVER (ORDER BY year, month))::numeric, 2)
-        ELSE NULL 
-    END as units_growth_pct,
-    CASE 
-        WHEN LAG(SUM(revenue)) OVER (ORDER BY year, month) > 0 
-        THEN ROUND(((SUM(revenue) - LAG(SUM(revenue)) OVER (ORDER BY year, month)) * 100.0 / LAG(SUM(revenue)) OVER (ORDER BY year, month))::numeric, 2)
-        ELSE NULL 
-    END as revenue_growth_pct
-FROM bmw_sales
-GROUP BY year, month
-ORDER BY year, month;
 
 -- 5. VIEW: Performance por Tipo de Combustível
 -- =====================================================
@@ -101,16 +72,16 @@ CREATE OR REPLACE VIEW analytics.kpi_fuel_type_performance AS
 SELECT 
     fuel_type,
     COUNT(*) as total_records,
-    SUM(sales_units) as total_units_sold,
-    SUM(revenue) as total_revenue,
-    SUM(total_sales) as total_sales_value,
-    AVG(sales_units) as avg_units_per_record,
-    AVG(revenue) as avg_revenue_per_record,
+    SUM(sales_volume) as total_units_sold,
+    SUM(price_usd * sales_volume) as total_revenue,
+    SUM(price_usd * sales_volume) as total_sales_value,
+    AVG(sales_volume) as avg_units_per_record,
+    AVG(price_usd * sales_volume) as avg_revenue_per_record,
     COUNT(DISTINCT model) as models_count,
     COUNT(DISTINCT region) as regions_count,
     -- KPIs calculados
-    ROUND((SUM(sales_units) * 100.0 / SUM(SUM(sales_units)) OVER())::numeric, 2) as market_share_units_pct,
-    ROUND((SUM(revenue) * 100.0 / SUM(SUM(revenue)) OVER())::numeric, 2) as market_share_revenue_pct
+    ROUND((SUM(sales_volume) * 100.0 / SUM(SUM(sales_volume)) OVER())::numeric, 2) as market_share_units_pct,
+    ROUND((SUM(price_usd * sales_volume) * 100.0 / SUM(SUM(price_usd * sales_volume)) OVER())::numeric, 2) as market_share_revenue_pct
 FROM bmw_sales
 WHERE fuel_type IS NOT NULL AND fuel_type != 'Unknown'
 GROUP BY fuel_type
@@ -122,16 +93,16 @@ CREATE OR REPLACE VIEW analytics.kpi_transmission_performance AS
 SELECT 
     transmission,
     COUNT(*) as total_records,
-    SUM(sales_units) as total_units_sold,
-    SUM(revenue) as total_revenue,
-    SUM(total_sales) as total_sales_value,
-    AVG(sales_units) as avg_units_per_record,
-    AVG(revenue) as avg_revenue_per_record,
+    SUM(sales_volume) as total_units_sold,
+    SUM(price_usd * sales_volume) as total_revenue,
+    SUM(price_usd * sales_volume) as total_sales_value,
+    AVG(sales_volume) as avg_units_per_record,
+    AVG(price_usd * sales_volume) as avg_revenue_per_record,
     COUNT(DISTINCT model) as models_count,
     COUNT(DISTINCT region) as regions_count,
     -- KPIs calculados
-    ROUND((SUM(sales_units) * 100.0 / SUM(SUM(sales_units)) OVER())::numeric, 2) as market_share_units_pct,
-    ROUND((SUM(revenue) * 100.0 / SUM(SUM(revenue)) OVER())::numeric, 2) as market_share_revenue_pct
+    ROUND((SUM(sales_volume) * 100.0 / SUM(SUM(sales_volume)) OVER())::numeric, 2) as market_share_units_pct,
+    ROUND((SUM(price_usd * sales_volume) * 100.0 / SUM(SUM(price_usd * sales_volume)) OVER())::numeric, 2) as market_share_revenue_pct
 FROM bmw_sales
 WHERE transmission IS NOT NULL AND transmission != 'Unknown'
 GROUP BY transmission
@@ -148,31 +119,31 @@ FROM bmw_sales
 UNION ALL
 SELECT 
     'Total Units Sold',
-    SUM(sales_units)::TEXT,
+    SUM(sales_volume)::TEXT,
     'units'
 FROM bmw_sales
 UNION ALL
 SELECT 
     'Total Revenue',
-    CONCAT('$', ROUND((SUM(revenue)/1000000000)::numeric, 2), 'B'),
+    CONCAT('$', ROUND((SUM(price_usd * sales_volume)/1000000000)::numeric, 2), 'B'),
     'USD'
 FROM bmw_sales
 UNION ALL
 SELECT 
     'Total Sales Value',
-    CONCAT('$', ROUND((SUM(total_sales)/1000000000)::numeric, 2), 'B'),
+    CONCAT('$', ROUND((SUM(price_usd * sales_volume)/1000000000)::numeric, 2), 'B'),
     'USD'
 FROM bmw_sales
 UNION ALL
 SELECT 
     'Average Units per Record',
-    ROUND(AVG(sales_units)::numeric, 0)::TEXT,
+    ROUND(AVG(sales_volume)::numeric, 0)::TEXT,
     'units'
 FROM bmw_sales
 UNION ALL
 SELECT 
     'Average Revenue per Record',
-    CONCAT('$', ROUND(AVG(revenue)::numeric, 0)),
+    CONCAT('$', ROUND(AVG(price_usd * sales_volume)::numeric, 0)),
     'USD'
 FROM bmw_sales
 UNION ALL
@@ -189,8 +160,8 @@ SELECT
 FROM bmw_sales
 UNION ALL
 SELECT 
-    'Number of Countries',
-    COUNT(DISTINCT country)::TEXT,
+    'Number of Regions',
+    COUNT(DISTINCT region)::TEXT,
     'count'
 FROM bmw_sales
 UNION ALL
@@ -259,7 +230,7 @@ ORDER BY year;
 COMMENT ON VIEW analytics.kpi_annual_sales IS 'KPIs de vendas agregados por ano';
 COMMENT ON VIEW analytics.kpi_regional_performance IS 'Performance de vendas por região com market share';
 COMMENT ON VIEW analytics.kpi_model_performance IS 'Performance de vendas por modelo com rankings';
-COMMENT ON VIEW analytics.kpi_monthly_trends IS 'Tendências mensais com crescimento período a período';
+-- COMMENT ON VIEW analytics.kpi_monthly_trends IS 'Tendências mensais com crescimento período a período' (REMOVED);
 COMMENT ON VIEW analytics.kpi_fuel_type_performance IS 'Performance por tipo de combustível';
 COMMENT ON VIEW analytics.kpi_transmission_performance IS 'Performance por tipo de transmissão';
 COMMENT ON VIEW analytics.kpi_executive_dashboard IS 'Dashboard executivo com KPIs principais';

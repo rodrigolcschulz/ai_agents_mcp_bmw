@@ -2,8 +2,9 @@
 AI Agents package for SQL query generation and MCP communication
 """
 
-from .sql_agent import SQLAgent
-from .multi_llm_agent import MultiLLMAgent
-from .mcp_handler import MCPHandler, MCPClient
-
-__all__ = ['SQLAgent', 'MultiLLMAgent', 'MCPHandler', 'MCPClient']
+# Only import what's available to avoid dependency issues
+try:
+    from .mcp_agent import MCPAgent
+    __all__ = ['MCPAgent']
+except ImportError:
+    __all__ = []

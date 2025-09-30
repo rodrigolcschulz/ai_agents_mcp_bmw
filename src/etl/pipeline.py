@@ -11,7 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from etl.kaggle_extractor import KaggleExtractor
 from etl.data_processor import DataProcessor
-from database.loader_fixed import DatabaseLoader
+from database.loader import DatabaseLoader
 
 # Configure logging
 logging.basicConfig(

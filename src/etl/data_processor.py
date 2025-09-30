@@ -86,14 +86,12 @@ class DataProcessor:
         # Standardize column names
         transformed_df.columns = transformed_df.columns.str.lower().str.replace(' ', '_')
         
-        # Convert date columns if they exist
-        date_columns = ['date', 'year', 'month', 'sales_date']
-        for col in date_columns:
-            if col in transformed_df.columns:
-                try:
-                    transformed_df[col] = pd.to_datetime(transformed_df[col], errors='coerce')
-                except:
-                    pass
+        # Convert year column to integer (not datetime)
+        if 'year' in transformed_df.columns:
+            try:
+                transformed_df['year'] = pd.to_numeric(transformed_df['year'], errors='coerce').astype('Int64')
+            except:
+                pass
         
         # Create derived features
         if 'year' in transformed_df.columns:
@@ -101,11 +99,17 @@ class DataProcessor:
             transformed_df['year_month'] = transformed_df['year'].astype(str) + '-01'
         
         # Add sales metrics if sales data exists
-        sales_columns = [col for col in transformed_df.columns if 'sales' in col.lower() or 'units' in col.lower()]
+        sales_columns = [col for col in transformed_df.columns if 'sales' in col.lower() or 'units' in col.lower() or 'volume' in col.lower()]
         if sales_columns:
             # Convert to numeric and handle non-numeric values
             numeric_sales = transformed_df[sales_columns].apply(pd.to_numeric, errors='coerce')
             transformed_df['total_sales'] = numeric_sales.sum(axis=1)
+        
+        # Ensure numeric columns are properly converted
+        numeric_columns = ['engine_size_l', 'mileage_km', 'price_usd', 'sales_volume']
+        for col in numeric_columns:
+            if col in transformed_df.columns:
+                transformed_df[col] = pd.to_numeric(transformed_df[col], errors='coerce')
         
         logger.info("BMW data transformation completed")
         return transformed_df

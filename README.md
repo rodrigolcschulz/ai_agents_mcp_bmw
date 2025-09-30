@@ -1,16 +1,16 @@
-# 🤖 AI Data Engineering Project
+# 🚗 BMW Sales Analytics - MCP Agent
 
-Um projeto completo de engenharia de dados com IA que inclui ETL, banco de dados PostgreSQL, agente de IA com MCP (Model Context Protocol) e interface web com Streamlit.
+Um projeto completo de análise de dados de vendas da BMW com agente de IA que permite consultas em linguagem natural através de uma interface web moderna.
 
 ## 📋 Visão Geral
 
-Este projeto demonstra uma arquitetura moderna de engenharia de dados com IA, incluindo:
+Este projeto demonstra uma arquitetura moderna de análise de dados com IA, incluindo:
 
-- **ETL Pipeline**: Extração de dados do Kaggle
-- **Banco de Dados**: PostgreSQL com modelos otimizados
-- **Agente de IA**: Geração de consultas SQL usando OpenAI e LangChain
-- **MCP**: Protocolo de comunicação para o agente de IA
+- **ETL Pipeline**: Extração de dados do Kaggle (BMW Sales Dataset)
+- **Banco de Dados**: PostgreSQL com 50.000 registros de vendas
+- **Agente MCP**: Consultas em linguagem natural com padrões de reconhecimento aprimorados
 - **Interface Web**: Dashboard interativo com Streamlit
+- **Visualizações**: Gráficos automáticos baseados nas consultas
 - **Containerização**: Docker Compose para orquestração completa
 
 ## 🏗️ Arquitetura
@@ -18,62 +18,61 @@ Este projeto demonstra uma arquitetura moderna de engenharia de dados com IA, in
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Kaggle API    │───▶│   ETL Pipeline  │───▶│   PostgreSQL    │
+│  (BMW Dataset)  │    │  (50k records)  │    │  (Sales Data)   │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                                                        │
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Streamlit UI  │◀───│   AI Agent      │◀───│   MCP Handler   │
+│   Streamlit UI  │◀───│   MCP Agent     │◀───│   KPI Views     │
+│  (Web Interface)│    │ (Natural Lang)  │    │  (Analytics)    │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
 ## 🚀 Funcionalidades
 
 ### 🔄 ETL Pipeline
-- Extração automática de datasets do Kaggle
-- Processamento e limpeza de dados
+- Extração automática do dataset BMW Sales do Kaggle
+- Processamento e limpeza de 50.000 registros
 - Validação de qualidade dos dados
 - Carregamento otimizado no PostgreSQL
 
-### 🤖 Agente de IA Multi-LLM
-- Geração de consultas SQL a partir de linguagem natural
-- Suporte para múltiplos provedores de IA:
-  - **OpenAI GPT-4**: Rápido e preciso
-  - **Anthropic Claude**: Raciocínio avançado
-  - **Hugging Face**: Modelos open source
-- Protocolo MCP para comunicação
-- Histórico de consultas e métricas
+### 🤖 Agente MCP (Model Context Protocol)
+- Consultas em linguagem natural (português/inglês)
+- Padrões de reconhecimento aprimorados
+- Sistema de confiança (0.0 - 1.0)
+- 10 consultas predefinidas + consultas customizadas
+- Geração automática de SQL
 
-### 📊 Interface Web
-- Dashboard interativo com Streamlit
-- Visualizações automáticas de dados
-- Histórico de consultas
-- Estatísticas do banco de dados
-- Exportação de dados e relatórios
+### 📊 Interface Web Streamlit
+- Dashboard interativo com visualizações automáticas
+- Consultas em linguagem natural
+- Gráficos dinâmicos (barras, linhas, pizza)
+- Score de confiança das consultas
+- Schema do banco de dados
+- Exemplos de consultas
 
 ### 🗄️ Banco de Dados
-- PostgreSQL com otimizações
-- Modelos de dados estruturados
-- Views analíticas pré-definidas
-- Funções de validação e limpeza
-- Logs de consultas e métricas
+- PostgreSQL com 50.000 registros de vendas BMW
+- 19 colunas: região, modelo, vendas, receita, preço, etc.
+- 10 views de KPIs pré-definidas
+- Schema analytics para relatórios
+- Otimizações de performance
 
 ## 📁 Estrutura do Projeto
 
 ```
-ai_data_engineering/
+ai_agents/
 ├── src/
-│   ├── agents/           # Agentes de IA e MCP
+│   ├── agents/           # Agente MCP
 │   ├── config/           # Configurações do banco
-│   ├── database/         # Carregamento de dados
 │   ├── etl/             # Pipeline ETL
-│   ├── models/          # Modelos do banco
 │   └── web/             # Interface Streamlit
-├── sql/                 # Scripts SQL
-├── nginx/               # Configuração Nginx
-├── data/                # Dados processados
-├── logs/                # Logs da aplicação
+├── sql/                 # Scripts SQL e views de KPIs
+├── tests/               # Testes automatizados
+├── logs/                # Logs do sistema
+├── notebooks/           # Jupyter notebooks
 ├── docker-compose.yml   # Orquestração Docker
-├── Dockerfile           # Imagem da aplicação
-├── requirements.txt     # Dependências Python
+├── Dockerfile          # Imagem da aplicação
+├── requirements.txt    # Dependências Python
 └── README.md           # Este arquivo
 ```
 
@@ -221,6 +220,41 @@ docker-compose logs -f app
 docker-compose exec app bash
 docker-compose exec postgres psql -U postgres -d ai_data_engineering
 ```
+
+## 💬 Exemplos de Consultas
+
+O agente MCP entende consultas em português e inglês. Aqui estão alguns exemplos:
+
+### 📊 Consultas de Dashboard
+- "Mostre o dashboard executivo"
+- "Quais são as métricas principais?"
+- "Exiba um resumo geral"
+
+### 🌍 Consultas Regionais
+- "Quais são as top 5 regiões?"
+- "Mostre a performance por região"
+- "Qual região tem maior faturamento?"
+
+### 🚗 Consultas de Modelos
+- "Quais são os top 10 modelos?"
+- "Mostre a performance por modelo"
+- "Qual modelo é mais vendido?"
+
+### 📈 Consultas Temporais
+- "Mostre as vendas anuais"
+- "Exiba as tendências mensais"
+- "Qual o crescimento anual?"
+
+### 🔢 Consultas Numéricas
+- "Conte o total de registros"
+- "Qual a média de preços?"
+- "Soma total de vendas"
+- "Qual o preço máximo/mínimo?"
+
+### ⚡ Consultas de Performance
+- "Mostre a performance por combustível"
+- "Exiba a performance por transmissão"
+- "Qual o ranking de modelos?"
 
 ## 📈 Monitoramento e Logs
 
