@@ -12,10 +12,10 @@ load_dotenv()
 # Database configuration
 DATABASE_CONFIG = {
     'host': os.getenv('POSTGRES_HOST', 'localhost'),
-    'port': os.getenv('POSTGRES_PORT', '5432'),
+    'port': os.getenv('POSTGRES_PORT', '5433'),
     'database': os.getenv('POSTGRES_DB', 'ai_data_engineering'),
     'user': os.getenv('POSTGRES_USER', 'postgres'),
-    'password': os.getenv('POSTGRES_PASSWORD', 'password')
+    'password': os.getenv('POSTGRES_PASSWORD', 'postgres123')
 }
 
 # Create database URL
@@ -51,11 +51,9 @@ def get_db():
 def test_connection():
     """Test database connection"""
     try:
-        # Test with explicit encoding handling
         import psycopg2
-        from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
         
-        # Direct psycopg2 connection for testing
+        # Simple connection test with encoding settings
         conn = psycopg2.connect(
             host=DATABASE_CONFIG['host'],
             port=DATABASE_CONFIG['port'],
@@ -65,16 +63,12 @@ def test_connection():
             client_encoding='utf8'
         )
         
-        # Test basic query
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1")
-        result = cursor.fetchone()
-        cursor.close()
-        conn.close()
+        # Set encoding explicitly
+        conn.set_client_encoding('UTF8')
         
-        print("Database connection successful!")
+        conn.close()
         return True
         
     except Exception as e:
-        print(f"Database connection failed: {e}")
+        print(f"Database connection failed: {str(e)}")
         return False

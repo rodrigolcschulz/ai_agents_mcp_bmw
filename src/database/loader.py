@@ -2,31 +2,153 @@
 Database loader for inserting processed data into PostgreSQL
 """
 import pandas as pd
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import text
+import psycopg2
+from psycopg2.extras import execute_values
 from typing import List, Dict, Any, Optional
 import logging
 from datetime import datetime
-
-from config.database import engine, Base
-from models.database_models import BMWSales, DataSource, QueryLog, SystemMetrics
 
 logger = logging.getLogger(__name__)
 
 class DatabaseLoader:
     def __init__(self):
         """Initialize database loader"""
-        self.engine = engine
-        self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        # Database configuration
+        self.DB_CONFIG = {
+            'host': 'localhost',
+            'port': 5433,
+            'database': 'ai_data_engineering',
+            'user': 'postgres',
+            'password': 'postgres123',
+            'client_encoding': 'utf8'
+        }
     
     def create_tables(self):
         """Create all database tables"""
         try:
-            Base.metadata.create_all(bind=self.engine)
+            conn = psycopg2.connect(**self.DB_CONFIG)
+            conn.set_client_encoding('UTF8')
+            cursor = conn.cursor()
+            
+            # Create BMW sales table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS bmw_sales (
+                    id SERIAL PRIMARY KEY,
+                    year INTEGER NOT NULL,
+                    month INTEGER NOT NULL,
+                    year_month VARCHAR(7),
+                    region VARCHAR(100),
+                    country VARCHAR(100),
+                    model VARCHAR(100),
+                    sales_units INTEGER,
+                    revenue FLOAT,
+                    total_sales FLOAT,
+                    color VARCHAR(50),
+                    fuel_type VARCHAR(50),
+                    transmission VARCHAR(50),
+                    engine_size FLOAT,
+                    mileage_km INTEGER,
+                    price_usd FLOAT,
+                    sales_classification VARCHAR(50),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            # Create data sources table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS data_sources (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(200) NOT NULL,
+                    source_type VARCHAR(50) NOT NULL,
+                    source_url VARCHAR(500),
+                    dataset_name VARCHAR(200),
+                    file_path VARCHAR(500),
+                    record_count INTEGER,
+                    last_updated TIMESTAMP,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            # Create query logs table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS query_logs (
+                    id SERIAL PRIMARY KEY,
+                    user_query TEXT NOT NULL,
+                    sql_query TEXT,
+                    response TEXT,
+                    execution_time FLOAT,
+                    success BOOLEAN DEFAULT TRUE,
+                    error_message TEXT,
+                    user_id VARCHAR(100),
+                    session_id VARCHAR(100),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
             logger.info("Database tables created successfully")
+            return True
+            
         except Exception as e:
             logger.error(f"Error creating tables: {e}")
-            raise
+            return False
+    
+    def clear_existing_data(self):
+        """Clear existing BMW sales data"""
+        try:
+            conn = psycopg2.connect(**self.DB_CONFIG)
+            conn.set_client_encoding('UTF8')
+            cursor = conn.cursor()
+            
+            # Clear BMW sales data
+            cursor.execute("DELETE FROM bmw_sales")
+            
+            # Clear data sources
+            cursor.execute("DELETE FROM data_sources")
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            logger.info("Cleared existing data")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error clearing data: {e}")
+            return False
+    
+    def safe_int(self, value, default=0):
+        """Safely convert value to int"""
+        try:
+            if pd.isna(value):
+                return default
+            if isinstance(value, (int, float)):
+                return int(value)
+            if isinstance(value, str):
+                return int(float(value))
+            if hasattr(value, 'year'):  # datetime object
+                return value.year
+            return int(value)
+        except:
+            return default
+
+    def safe_float(self, value, default=0.0):
+        """Safely convert value to float"""
+        try:
+            if pd.isna(value):
+                return default
+            if isinstance(value, (int, float)):
+                return float(value)
+            if isinstance(value, str):
+                return float(value)
+            return float(value)
+        except:
+            return default
     
     def load_bmw_sales(self, df: pd.DataFrame, 
                       source_name: str = "BMW Global Sales Analysis",
@@ -68,95 +190,127 @@ class DatabaseLoader:
     
     def _record_data_source(self, name: str, source_type: str, record_count: int) -> int:
         """Record data source information"""
-        session = self.SessionLocal()
+        conn = psycopg2.connect(**self.DB_CONFIG)
+        conn.set_client_encoding('UTF8')
+        cursor = conn.cursor()
+        
         try:
-            data_source = DataSource(
-                name=name,
-                source_type=source_type,
-                record_count=record_count,
-                last_updated=datetime.now()
-            )
-            session.add(data_source)
-            session.commit()
-            session.refresh(data_source)
-            return data_source.id
+            cursor.execute("""
+                INSERT INTO data_sources (name, source_type, record_count, last_updated)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id
+            """, (name, source_type, record_count, datetime.now()))
+            
+            source_id = cursor.fetchone()[0]
+            conn.commit()
+            return source_id
+            
         except Exception as e:
-            session.rollback()
+            conn.rollback()
             logger.error(f"Error recording data source: {e}")
             raise
         finally:
-            session.close()
+            cursor.close()
+            conn.close()
     
     def _insert_bmw_batch(self, batch_df: pd.DataFrame, source_id: int) -> int:
         """Insert a batch of BMW sales records"""
-        session = self.SessionLocal()
+        conn = psycopg2.connect(**self.DB_CONFIG)
+        conn.set_client_encoding('UTF8')
+        cursor = conn.cursor()
+        
         try:
-            records = []
+            # Prepare data for insertion
+            data_tuples = []
             for _, row in batch_df.iterrows():
-                # Map DataFrame columns to model fields
-                record = BMWSales(
-                    year=row.get('year'),
-                    month=1,  # Default month since CSV doesn't have month data
-                    year_month=row.get('year_month'),
-                    region=row.get('region'),
-                    country=row.get('region'),  # Use region as country for now
-                    model=row.get('model'),
-                    sales_units=row.get('sales_volume'),
-                    revenue=row.get('price_usd'),
-                    total_sales=row.get('total_sales')
-                )
-                records.append(record)
+                # Map DataFrame columns to database fields with proper type conversion
+                year = self.safe_int(row.get('year', 2024), 2024)
+                month = 1  # Default month since CSV doesn't have month data
+                
+                sales_volume = self.safe_int(row.get('sales_volume', 0), 0)
+                price_usd = self.safe_float(row.get('price_usd', 0), 0)
+                engine_size = self.safe_float(row.get('engine_size_l', 0), 0)
+                mileage_km = self.safe_int(row.get('mileage_km', 0), 0)
+                
+                data_tuples.append((
+                    year,  # year
+                    month,  # month
+                    f"{year}-01",  # year_month
+                    str(row.get('region', 'Unknown'))[:100],  # region
+                    str(row.get('region', 'Unknown'))[:100],  # country (use region)
+                    str(row.get('model', 'Unknown'))[:100],  # model
+                    sales_volume,  # sales_units
+                    price_usd,  # revenue
+                    price_usd * sales_volume,  # total_sales
+                    str(row.get('color', 'Unknown'))[:50],  # color
+                    str(row.get('fuel_type', 'Unknown'))[:50],  # fuel_type
+                    str(row.get('transmission', 'Unknown'))[:50],  # transmission
+                    engine_size,  # engine_size
+                    mileage_km,  # mileage_km
+                    price_usd,  # price_usd
+                    str(row.get('sales_classification', 'Unknown'))[:50]  # sales_classification
+                ))
             
-            session.add_all(records)
-            session.commit()
-            return len(records)
+            # Insert data
+            insert_query = """
+                INSERT INTO bmw_sales (year, month, year_month, region, country, model, sales_units, revenue, total_sales,
+                                      color, fuel_type, transmission, engine_size, mileage_km, price_usd, sales_classification)
+                VALUES %s
+            """
+            
+            execute_values(cursor, insert_query, data_tuples)
+            conn.commit()
+            
+            return len(data_tuples)
             
         except Exception as e:
-            session.rollback()
+            conn.rollback()
             logger.error(f"Error inserting BMW batch: {e}")
             raise
         finally:
-            session.close()
+            cursor.close()
+            conn.close()
     
     def log_query(self, user_query: str, sql_query: str = None, 
                   response: str = None, execution_time: float = None,
                   success: bool = True, error_message: str = None,
                   user_id: str = None, session_id: str = None):
         """Log AI agent query interactions"""
-        session = self.SessionLocal()
+        conn = psycopg2.connect(**self.DB_CONFIG)
+        conn.set_client_encoding('UTF8')
+        cursor = conn.cursor()
+        
         try:
-            query_log = QueryLog(
-                user_query=user_query,
-                sql_query=sql_query,
-                response=response,
-                execution_time=execution_time,
-                success=success,
-                error_message=error_message,
-                user_id=user_id,
-                session_id=session_id
-            )
-            session.add(query_log)
-            session.commit()
+            cursor.execute("""
+                INSERT INTO query_logs (user_query, sql_query, response, execution_time, success, error_message, user_id, session_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (user_query, sql_query, response, execution_time, success, error_message, user_id, session_id))
+            
+            conn.commit()
         except Exception as e:
-            session.rollback()
+            conn.rollback()
             logger.error(f"Error logging query: {e}")
         finally:
-            session.close()
+            cursor.close()
+            conn.close()
     
     def get_table_info(self, table_name: str) -> Dict[str, Any]:
         """Get information about a database table"""
-        session = self.SessionLocal()
+        conn = psycopg2.connect(**self.DB_CONFIG)
+        conn.set_client_encoding('UTF8')
+        cursor = conn.cursor()
+        
         try:
             # Get table schema
-            result = session.execute(text(f"""
+            cursor.execute("""
                 SELECT column_name, data_type, is_nullable, column_default
                 FROM information_schema.columns
-                WHERE table_name = '{table_name}'
+                WHERE table_name = %s AND table_schema = 'public'
                 ORDER BY ordinal_position
-            """))
+            """, (table_name,))
             
             columns = []
-            for row in result:
+            for row in cursor.fetchall():
                 columns.append({
                     'name': row[0],
                     'type': row[1],
@@ -165,8 +319,8 @@ class DatabaseLoader:
                 })
             
             # Get row count
-            count_result = session.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
-            row_count = count_result.scalar()
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+            row_count = cursor.fetchone()[0]
             
             return {
                 'table_name': table_name,
@@ -178,17 +332,21 @@ class DatabaseLoader:
             logger.error(f"Error getting table info for {table_name}: {e}")
             return {}
         finally:
-            session.close()
+            cursor.close()
+            conn.close()
     
     def execute_query(self, query: str) -> List[Dict[str, Any]]:
         """Execute a SQL query and return results"""
-        session = self.SessionLocal()
+        conn = psycopg2.connect(**self.DB_CONFIG)
+        conn.set_client_encoding('UTF8')
+        cursor = conn.cursor()
+        
         try:
-            result = session.execute(text(query))
+            cursor.execute(query)
             
             # Convert result to list of dictionaries
-            columns = result.keys()
-            rows = result.fetchall()
+            columns = [desc[0] for desc in cursor.description]
+            rows = cursor.fetchall()
             
             return [dict(zip(columns, row)) for row in rows]
             
@@ -196,14 +354,15 @@ class DatabaseLoader:
             logger.error(f"Error executing query: {e}")
             raise
         finally:
-            session.close()
+            cursor.close()
+            conn.close()
     
     def get_database_stats(self) -> Dict[str, Any]:
         """Get overall database statistics"""
         stats = {}
         
         # Get table information
-        tables = ['bmw_sales', 'data_sources', 'query_logs', 'system_metrics']
+        tables = ['bmw_sales', 'data_sources', 'query_logs']
         for table in tables:
             try:
                 table_info = self.get_table_info(table)
