@@ -71,7 +71,11 @@ class MCPAgentImproved:
                 r'(performance|desempenho).*(por|do|dos).*(modelo|modelos)',
                 r'(vendas|resultados).*(por|do|dos).*(modelo|modelos)',
                 r'(análise|comparativo).*(modelos|modelo)',
-                r'(modelo|modelos).*(performance|desempenho|vendas)'
+                r'(modelo|modelos).*(performance|desempenho|vendas)',
+                r'(total|soma).*(vendas|receita).*(por|do|dos).*(modelo|modelos)',
+                r'(modelo|modelos).*(total|soma).*(vendas|receita)',
+                r'(mostre|exiba).*(total|soma).*(vendas|receita).*(por|do|dos).*(modelo|modelos)',
+                r'(receita|faturamento).*(por|do|dos).*(modelo|modelos)'
             ],
             
             # Time-based queries - Enhanced patterns
@@ -82,14 +86,6 @@ class MCPAgentImproved:
                 r'(evolução|histórico).*(anual|por ano)'
             ],
             
-            'monthly_trends': [
-                r'(tendências|trends).*(mensais|mensal|monthly|por mês)',
-                r'(mostre|exiba).*(tendências|trends).*(mensais|mensal)',
-                r'(evolução|histórico).*(mensal|por mês)',
-                r'(sazonalidade|sazonal).*(vendas|sales)',
-                r'(mostre|exiba).*(as).*(tendências|trends).*(mensais|mensal)',
-                r'(tendências|trends).*(mensais|mensal)'
-            ],
             
             'annual_growth': [
                 r'(crescimento|growth|evolução).*(anual|por ano)',
@@ -293,7 +289,7 @@ class MCPAgentImproved:
             'top_models': "SELECT * FROM analytics.kpi_top_10_models LIMIT 10",
             'annual_sales': "SELECT * FROM analytics.kpi_annual_sales",
             'regional_performance': "SELECT * FROM analytics.kpi_regional_performance",
-            'model_performance': "SELECT * FROM analytics.kpi_model_performance",
+            'model_performance': "SELECT model, TO_CHAR(SUM(price_usd * sales_volume), 'FM999,999,999,999,999') as total_revenue, SUM(sales_volume) as total_units_sold FROM bmw_sales GROUP BY model ORDER BY SUM(price_usd * sales_volume) DESC",
             'fuel_performance': "SELECT * FROM analytics.kpi_fuel_type_performance",
             'transmission_performance': "SELECT * FROM analytics.kpi_transmission_performance",
             'annual_growth': "SELECT * FROM analytics.kpi_annual_growth",
@@ -323,8 +319,8 @@ class MCPAgentImproved:
             
             # Sum queries
             'sum_sales': "SELECT SUM(sales_volume) as total_sales FROM bmw_sales",
-            'sum_revenue': "SELECT SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales",
-            'sum_sales_value': "SELECT SUM(price_usd * sales_volume) as total_sales_value FROM bmw_sales",
+            'sum_revenue': "SELECT TO_CHAR(SUM(price_usd * sales_volume), 'FM999,999,999,999,999') as total_revenue FROM bmw_sales",
+            'sum_sales_value': "SELECT TO_CHAR(SUM(price_usd * sales_volume), 'FM999,999,999,999,999') as total_sales_value FROM bmw_sales",
             
             # Min/Max queries
             'min_price': "SELECT MIN(price_usd) as min_price FROM bmw_sales",
@@ -333,8 +329,8 @@ class MCPAgentImproved:
             'max_sales': "SELECT MAX(sales_volume) as max_sales FROM bmw_sales",
             
             # Top performance queries
-            'top_region_revenue': "SELECT region, SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales GROUP BY region ORDER BY total_revenue DESC LIMIT 1",
-            'top_model_revenue': "SELECT model, SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales GROUP BY model ORDER BY total_revenue DESC LIMIT 1",
+            'top_region_revenue': "SELECT region, TO_CHAR(SUM(price_usd * sales_volume), 'FM999,999,999,999,999') as total_revenue FROM bmw_sales GROUP BY region ORDER BY SUM(price_usd * sales_volume) DESC LIMIT 1",
+            'top_model_revenue': "SELECT model, TO_CHAR(SUM(price_usd * sales_volume), 'FM999,999,999,999,999') as total_revenue FROM bmw_sales GROUP BY model ORDER BY SUM(price_usd * sales_volume) DESC LIMIT 1",
             
             # Specific model queries
             'series_7': "SELECT * FROM bmw_sales WHERE model = '7 Series' ORDER BY sales_volume DESC LIMIT 10",
@@ -542,28 +538,28 @@ class MCPAgentImproved:
                 # Check if grouping is requested
                 if any(word in query for word in ['por', 'por cada', 'por modelo', 'por modelos', 'por região', 'por regiões', 'por ano', 'por anos']):
                     if any(word in query for word in ['modelo', 'modelos']):
-                        return "SELECT model, SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales GROUP BY model ORDER BY total_revenue DESC"
+                        return "SELECT model, TO_CHAR(SUM(price_usd * sales_volume), 'FM999,999,999,999,999') as total_revenue FROM bmw_sales GROUP BY model ORDER BY SUM(price_usd * sales_volume) DESC"
                     elif any(word in query for word in ['região', 'regiões']):
-                        return "SELECT region, SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales GROUP BY region ORDER BY total_revenue DESC"
+                        return "SELECT region, TO_CHAR(SUM(price_usd * sales_volume), 'FM999,999,999,999,999') as total_revenue FROM bmw_sales GROUP BY region ORDER BY SUM(price_usd * sales_volume) DESC"
                     elif any(word in query for word in ['ano', 'anos']):
-                        return "SELECT year, SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales GROUP BY year ORDER BY year"
+                        return "SELECT year, TO_CHAR(SUM(price_usd * sales_volume), 'FM999,999,999,999,999') as total_revenue FROM bmw_sales GROUP BY year ORDER BY year"
                     else:
-                        return "SELECT SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales"
+                        return "SELECT TO_CHAR(SUM(price_usd * sales_volume), 'FM999,999,999,999,999') as total_revenue FROM bmw_sales"
                 else:
-                    return "SELECT SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales"
+                    return "SELECT TO_CHAR(SUM(price_usd * sales_volume), 'FM999,999,999,999,999') as total_revenue FROM bmw_sales"
             elif any(word in query for word in ['valor', 'value', 'total_sales']):
                 # Check if grouping is requested
                 if any(word in query for word in ['por', 'por cada', 'por modelo', 'por modelos', 'por região', 'por regiões', 'por ano', 'por anos']):
                     if any(word in query for word in ['modelo', 'modelos']):
-                        return "SELECT model, SUM(price_usd * sales_volume) as total_sales_value FROM bmw_sales GROUP BY model ORDER BY total_sales_value DESC"
+                        return "SELECT model, TO_CHAR(SUM(price_usd * sales_volume), 'FM999,999,999,999,999') as total_sales_value FROM bmw_sales GROUP BY model ORDER BY SUM(price_usd * sales_volume) DESC"
                     elif any(word in query for word in ['região', 'regiões']):
-                        return "SELECT region, SUM(price_usd * sales_volume) as total_sales_value FROM bmw_sales GROUP BY region ORDER BY total_sales_value DESC"
+                        return "SELECT region, TO_CHAR(SUM(price_usd * sales_volume), 'FM999,999,999,999,999') as total_sales_value FROM bmw_sales GROUP BY region ORDER BY SUM(price_usd * sales_volume) DESC"
                     elif any(word in query for word in ['ano', 'anos']):
-                        return "SELECT year, SUM(price_usd * sales_volume) as total_sales_value FROM bmw_sales GROUP BY year ORDER BY year"
+                        return "SELECT year, TO_CHAR(SUM(price_usd * sales_volume), 'FM999,999,999,999,999') as total_sales_value FROM bmw_sales GROUP BY year ORDER BY year"
                     else:
-                        return "SELECT SUM(price_usd * sales_volume) as total_sales_value FROM bmw_sales"
+                        return "SELECT TO_CHAR(SUM(price_usd * sales_volume), 'FM999,999,999,999,999') as total_sales_value FROM bmw_sales"
                 else:
-                    return "SELECT SUM(price_usd * sales_volume) as total_sales_value FROM bmw_sales"
+                    return "SELECT TO_CHAR(SUM(price_usd * sales_volume), 'FM999,999,999,999,999') as total_sales_value FROM bmw_sales"
             else:
                 # Check if grouping is requested for generic sum
                 if any(word in query for word in ['por', 'por cada', 'por modelo', 'por modelos', 'por região', 'por regiões', 'por ano', 'por anos']):
@@ -594,9 +590,9 @@ class MCPAgentImproved:
         # Specific value queries
         elif any(word in query for word in ['maior', 'melhor', 'top 1']):
             if any(word in query for word in ['região', 'regiões']):
-                return "SELECT region, SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales GROUP BY region ORDER BY total_revenue DESC LIMIT 1"
+                return "SELECT region, TO_CHAR(SUM(price_usd * sales_volume), 'FM999,999,999,999,999') as total_revenue FROM bmw_sales GROUP BY region ORDER BY SUM(price_usd * sales_volume) DESC LIMIT 1"
             elif any(word in query for word in ['modelo', 'modelos']):
-                return "SELECT model, SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales GROUP BY model ORDER BY total_revenue DESC LIMIT 1"
+                return "SELECT model, TO_CHAR(SUM(price_usd * sales_volume), 'FM999,999,999,999,999') as total_revenue FROM bmw_sales GROUP BY model ORDER BY SUM(price_usd * sales_volume) DESC LIMIT 1"
         
         # Performance queries
         elif any(word in query for word in ['performance', 'desempenho']):
@@ -702,12 +698,12 @@ class MCPAgentImproved:
             "Quais são os top 10 modelos?",
             "Mostre as vendas anuais",
             "Qual a performance por região?",
-            "Mostre as tendências mensais",
             "Qual o crescimento anual?",
             "Conte o total de registros",
             "Qual a média de preços?",
             "Soma total de vendas",
             "Qual a região com maior faturamento?",
+            "Total de vendas por modelo",
             "Mostre a performance por combustível",
             "Qual o modelo mais vendido?",
             "Conte quantas regiões temos",
@@ -744,7 +740,6 @@ class MCPAgentImproved:
             'fuel_performance': 'Performance por tipo de combustível',
             'transmission_performance': 'Performance por transmissão',
             'annual_growth': 'Crescimento anual de vendas',
-            'monthly_trends': 'Tendências mensais de vendas',
             'year_analysis': 'Análise de vendas e modelos por ano'
         }
     

@@ -2,6 +2,11 @@
 -- BMW SALES KPIs - Views e Métricas de Performance
 -- =====================================================
 
+-- Drop existing views to avoid data type conflicts
+DROP VIEW IF EXISTS analytics.kpi_annual_growth CASCADE;
+DROP VIEW IF EXISTS analytics.kpi_seasonal_analysis CASCADE;
+DROP VIEW IF EXISTS analytics.kpi_temporal_trends CASCADE;
+
 -- 1. VIEW: Resumo Geral de Vendas por Ano
 -- =====================================================
 CREATE OR REPLACE VIEW analytics.kpi_annual_sales AS
@@ -209,7 +214,7 @@ SELECT
     total_units_sold,
     total_revenue,
     LAG(total_units_sold) OVER (ORDER BY year) as prev_year_units,
-    LAG(total_revenue) OVER (ORDER BY year) as prev_year_revenue,
+    TO_CHAR(LAG(total_revenue) OVER (ORDER BY year), 'FM999,999,999,999,999') as prev_year_revenue,
     CASE 
         WHEN LAG(total_units_sold) OVER (ORDER BY year) > 0 
         THEN ROUND(((total_units_sold - LAG(total_units_sold) OVER (ORDER BY year)) * 100.0 / LAG(total_units_sold) OVER (ORDER BY year))::numeric, 2)
@@ -325,7 +330,7 @@ SELECT
     AVG(price_usd * sales_volume) as avg_revenue_per_record,
     -- Comparação com ano anterior
     LAG(SUM(sales_volume)) OVER (PARTITION BY region ORDER BY year) as prev_year_units,
-    LAG(SUM(price_usd * sales_volume)) OVER (PARTITION BY region ORDER BY year) as prev_year_revenue,
+    TO_CHAR(LAG(SUM(price_usd * sales_volume)) OVER (PARTITION BY region ORDER BY year), 'FM999,999,999,999,999') as prev_year_revenue,
     -- Crescimento
     CASE 
         WHEN LAG(SUM(sales_volume)) OVER (PARTITION BY region ORDER BY year) > 0 
@@ -442,7 +447,7 @@ SELECT
     COUNT(DISTINCT region) as regions_count,
     -- Tendências
     LAG(SUM(sales_volume)) OVER (ORDER BY year) as prev_year_units,
-    LAG(SUM(price_usd * sales_volume)) OVER (ORDER BY year) as prev_year_revenue,
+    TO_CHAR(LAG(SUM(price_usd * sales_volume)) OVER (ORDER BY year), 'FM999,999,999,999,999') as prev_year_revenue,
     LAG(AVG(price_usd)) OVER (ORDER BY year) as prev_year_avg_price,
     -- Crescimento
     CASE 
