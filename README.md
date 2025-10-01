@@ -1,4 +1,4 @@
-# 🚗 BMW Sales Analytics - MCP Agent
+# 🚗 BMW Sales Analytics - Natural Language SQL Agent
 
 Um projeto completo de análise de dados de vendas da BMW com agente de IA que permite consultas em linguagem natural através de uma interface web moderna.
 
@@ -8,7 +8,7 @@ Este projeto demonstra uma arquitetura moderna de análise de dados com IA, incl
 
 - **ETL Pipeline**: Extração de dados do Kaggle (BMW Sales Dataset)
 - **Banco de Dados**: PostgreSQL com 50.000 registros de vendas
-- **Agente MCP**: Consultas em linguagem natural com padrões de reconhecimento aprimorados
+- **Natural Language SQL Agent**: Consultas em linguagem natural com padrões de reconhecimento aprimorados
 - **Interface Web**: Dashboard interativo com Streamlit
 - **Visualizações**: Gráficos automáticos baseados nas consultas
 - **Containerização**: Docker Compose para orquestração completa
@@ -22,8 +22,8 @@ Este projeto demonstra uma arquitetura moderna de análise de dados com IA, incl
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                                                        │
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Streamlit UI  │◀───│   MCP Agent     │◀───│   KPI Views     │
-│  (Web Interface)│    │ (Natural Lang)  │    │  (Analytics)    │
+│   Streamlit UI  │◀───│ Natural Lang    │◀───│   KPI Views     │
+│  (Web Interface)│    │   SQL Agent     │    │  (Analytics)    │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
@@ -35,7 +35,7 @@ Este projeto demonstra uma arquitetura moderna de análise de dados com IA, incl
 - Validação de qualidade dos dados
 - Carregamento otimizado no PostgreSQL
 
-### 🤖 Agente MCP (Model Context Protocol)
+### 🤖 Natural Language SQL Agent
 - Consultas em linguagem natural (português/inglês)
 - Padrões de reconhecimento aprimorados
 - Sistema de confiança (0.0 - 1.0)
@@ -62,7 +62,7 @@ Este projeto demonstra uma arquitetura moderna de análise de dados com IA, incl
 ```
 ai_agents/
 ├── src/
-│   ├── agents/           # Agente MCP
+│   ├── agents/           # Natural Language SQL Agent
 │   ├── config/           # Configurações do banco
 │   ├── etl/             # Pipeline ETL
 │   └── web/             # Interface Streamlit
@@ -223,7 +223,7 @@ docker-compose exec postgres psql -U postgres -d ai_data_engineering
 
 ## 💬 Exemplos de Consultas
 
-O agente MCP entende consultas em português e inglês. Aqui estão alguns exemplos:
+O Natural Language SQL Agent entende consultas em português e inglês. Aqui estão alguns exemplos:
 
 ### 📊 Consultas de Dashboard
 - "Mostre o dashboard executivo"

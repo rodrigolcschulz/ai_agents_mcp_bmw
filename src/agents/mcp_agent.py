@@ -1,5 +1,5 @@
 """
-MCP Agent - Versão Melhorada com Padrões de Reconhecimento Aprimorados
+Natural Language SQL Agent - Versão Melhorada com Padrões de Reconhecimento Aprimorados
 """
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -13,9 +13,9 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-class MCPAgentImproved:
+class NaturalLanguageSQLAgent:
     def __init__(self):
-        """Initialize Improved MCP Agent"""
+        """Initialize Natural Language SQL Agent"""
         # Database configuration
         import os
         self.DB_CONFIG = {
@@ -219,7 +219,10 @@ class MCPAgentImproved:
                 r'(média|media|average|avg).*(preço|preco|price)',
                 r'(preço|preco|price).*(médio|medio|average)',
                 r'(valor|value).*(médio|medio|average)',
-                r'(custo|cost).*(médio|medio|average)'
+                r'(custo|cost).*(médio|medio|average)',
+                r'(média|media|average|avg).*(preço|preco|price).*(por|do|da|dos).*(ano|anos)',
+                r'(preço|preco|price).*(médio|medio|average).*(por|do|da|dos).*(ano|anos)',
+                r'(qual|quais).*(média|media|average|avg).*(preço|preco|price).*(por|do|da|dos).*(ano|anos)'
             ],
             
             'average_sales': [
@@ -312,7 +315,7 @@ class MCPAgentImproved:
             'count_countries': "SELECT COUNT(DISTINCT country) as total_countries FROM bmw_sales",
             
             # Average queries
-            'average_price': "SELECT AVG(price_usd) as average_price FROM bmw_sales",
+            'average_price': "SELECT year, AVG(price_usd) as average_price FROM bmw_sales GROUP BY year ORDER BY year",
             'average_sales': "SELECT AVG(sales_volume) as average_sales FROM bmw_sales",
             'average_revenue': "SELECT AVG(price_usd * sales_volume) as average_revenue FROM bmw_sales",
             'average_mileage': "SELECT AVG(mileage_km) as average_mileage FROM bmw_sales",
@@ -340,7 +343,7 @@ class MCPAgentImproved:
         
         # Chart Agent removed - focusing on SQL functionality only
         
-        logger.info("Improved MCP Agent initialized")
+        logger.info("Natural Language SQL Agent initialized")
     
     def process_natural_language_query(self, query: str) -> Dict[str, Any]:
         """
@@ -789,8 +792,8 @@ class MCPAgentImproved:
             return {}
 
 def main():
-    """Test the Improved MCP Agent"""
-    agent = MCPAgentImproved()
+    """Test the Natural Language SQL Agent"""
+    agent = NaturalLanguageSQLAgent()
     
     # Test queries
     test_queries = [
@@ -806,7 +809,7 @@ def main():
         "Qual o preço máximo?"
     ]
     
-    print("=== TESTANDO MCP AGENT MELHORADO ===")
+    print("=== TESTANDO NATURAL LANGUAGE SQL AGENT ===")
     
     for query in test_queries:
         print(f"\n--- Consulta: {query} ---")

@@ -165,12 +165,6 @@ SELECT
 FROM bmw_sales
 UNION ALL
 SELECT 
-    'Number of Regions',
-    COUNT(DISTINCT region)::TEXT,
-    'count'
-FROM bmw_sales
-UNION ALL
-SELECT 
     'Years Covered',
     CONCAT(MIN(year), ' - ', MAX(year)),
     'period'

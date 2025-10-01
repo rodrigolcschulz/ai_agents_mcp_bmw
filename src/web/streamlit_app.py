@@ -1,5 +1,5 @@
 """
-Streamlit Web Interface for MCP Agent - BMW Sales Analytics
+Streamlit Web Interface for Natural Language SQL Agent - BMW Sales Analytics
 """
 import streamlit as st
 import pandas as pd
@@ -15,18 +15,18 @@ import importlib.util
 # Add src to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-# Import MCP Agent
+# Import Natural Language SQL Agent
 spec = importlib.util.spec_from_file_location("mcp_agent", os.path.join(os.path.dirname(__file__), '..', 'agents', 'mcp_agent.py'))
 mcp_agent_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mcp_agent_module)
-MCPAgentImproved = mcp_agent_module.MCPAgentImproved
+NaturalLanguageSQLAgent = mcp_agent_module.NaturalLanguageSQLAgent
 
 # Import database config
 from config.database import test_connection
 
 # Page configuration
 st.set_page_config(
-    page_title="BMW Sales Analytics - MCP Agent",
+    page_title="BMW Sales Analytics - Natural Language SQL Agent",
     page_icon="🚗",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -83,17 +83,17 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 @st.cache_resource
-def initialize_mcp_agent():
-    """Initialize MCP Agent"""
+def initialize_sql_agent():
+    """Initialize Natural Language SQL Agent"""
     try:
         # Initialize agent
-        agent = MCPAgentImproved()
+        agent = NaturalLanguageSQLAgent()
         
         # Test if agent can connect to database
         try:
             result = agent.process_natural_language_query("Mostre o dashboard executivo")
             if not result['success']:
-                st.error("❌ MCP Agent initialized but database connection failed")
+                st.error("❌ Natural Language SQL Agent initialized but database connection failed")
                 return None
         except Exception as db_error:
             st.error(f"❌ Database connection test failed: {db_error}")
@@ -102,7 +102,7 @@ def initialize_mcp_agent():
         return agent
         
     except Exception as e:
-        st.error(f"❌ Error initializing MCP Agent: {e}")
+        st.error(f"❌ Error initializing Natural Language SQL Agent: {e}")
         return None
 
 def get_confidence_color(confidence):
@@ -348,7 +348,6 @@ def display_available_queries(agent):
         'fuel_performance': 'Mostre a performance por combustível',
         'transmission_performance': 'Mostre a performance por transmissão',
         'annual_growth': 'Qual o crescimento anual?',
-        'monthly_trends': 'Mostre as tendências mensais',
         'year_analysis': 'Qual ano tem mais modelos vendidos?'
     }
     
@@ -395,10 +394,10 @@ def main():
     """Main Streamlit application"""
     
     # Header
-    st.markdown('<h1 class="main-header">🚗 BMW Sales Analytics - MCP Agent</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">🚗 BMW Sales Analytics - Natural Language SQL Agent</h1>', unsafe_allow_html=True)
     
-    # Initialize MCP Agent
-    agent = initialize_mcp_agent()
+    # Initialize Natural Language SQL Agent
+    agent = initialize_sql_agent()
     
     if not agent:
         st.stop()
@@ -462,7 +461,7 @@ def main():
         col1, col2 = st.columns(2)
         
         with col1:
-            st.info("💡 **Tip:** Use natural language to query your BMW sales data. The MCP Agent understands Portuguese and English queries.")
+            st.info("💡 **Tip:** Use natural language to query your BMW sales data. The Natural Language SQL Agent understands Portuguese and English queries.")
         
         with col2:
             st.info("🔧 **Feature:** The agent can understand complex queries and generate optimized SQL automatically with confidence scoring.")
@@ -593,7 +592,6 @@ def main():
             "Mostre as vendas anuais",
             "Qual a média de preços?",
             "Soma total de vendas",
-            "Mostre as tendências mensais",
             "Qual o crescimento anual?",
             "Conte o total de registros",
             "Qual o preço máximo?"
@@ -640,8 +638,7 @@ def main():
             {"query": "Mostre o dashboard executivo", "success": True, "time": "0.071s"},
             {"query": "Quais são as top 5 regiões?", "success": True, "time": "0.050s"},
             {"query": "Qual a média de preços?", "success": False, "time": "0.000s"},
-            {"query": "Soma total de vendas", "success": False, "time": "0.000s"},
-            {"query": "Mostre as tendências mensais", "success": True, "time": "0.060s"}
+            {"query": "Soma total de vendas", "success": False, "time": "0.000s"}
         ]
         
         for query_info in example_queries:
