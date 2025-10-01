@@ -114,8 +114,9 @@ def get_confidence_color(confidence):
     else:
         return "confidence-low"
 
-def display_query_result(result, query):
-    """Display query result with formatting"""
+
+def display_query_result(result, query, agent=None):
+    """Display query result with formatting and automatic chart generation"""
     if result['success']:
         st.markdown(f'<div class="success-message">✅ Query executed successfully!</div>', unsafe_allow_html=True)
         
@@ -137,12 +138,17 @@ def display_query_result(result, query):
         if result.get('results'):
             st.subheader("📊 Results")
             results_df = pd.DataFrame(result['results'])
-            st.dataframe(results_df, use_container_width=True)
             
-            # Create visualizations
-            if len(results_df) > 0:
-                st.subheader("📈 Visualization")
-                create_visualizations(results_df, result.get('query_type', 'unknown'))
+            # Format numeric columns with thousand separators
+            formatted_df = results_df.copy()
+            for col in formatted_df.columns:
+                if formatted_df[col].dtype in ['int64', 'float64']:
+                    # Check if column contains large numbers that would benefit from formatting
+                    if formatted_df[col].max() > 1000:
+                        formatted_df[col] = formatted_df[col].apply(lambda x: f"{x:,.0f}" if pd.notna(x) and x == int(x) else f"{x:,.2f}" if pd.notna(x) else x)
+            
+            st.dataframe(formatted_df, use_container_width=True)
+            
         
         # Display metadata
         st.subheader("ℹ️ Query Information")
@@ -163,6 +169,49 @@ def display_query_result(result, query):
             st.subheader("💡 Suggestions")
             for suggestion in result['suggestions']:
                 st.write(f"• {suggestion}")
+
+
+def format_number_streamlit(value, format_type='auto'):
+    """Format numbers with thousand separators for Streamlit"""
+    try:
+        if pd.isna(value) or value is None:
+            return "N/A"
+        
+        value = float(value)
+        
+        if format_type == 'currency':
+            if abs(value) >= 1e12:
+                return f"${value/1e12:.1f}T"
+            elif abs(value) >= 1e9:
+                return f"${value/1e9:.1f}B"
+            elif abs(value) >= 1e6:
+                return f"${value/1e6:.1f}M"
+            elif abs(value) >= 1e3:
+                return f"${value/1e3:.1f}K"
+            else:
+                return f"${value:,.0f}"
+        elif format_type == 'count':
+            if abs(value) >= 1e9:
+                return f"{value/1e9:.1f}B"
+            elif abs(value) >= 1e6:
+                return f"{value/1e6:.1f}M"
+            elif abs(value) >= 1e3:
+                return f"{value/1e3:.1f}K"
+            else:
+                return f"{value:,.0f}"
+        else:  # auto
+            if abs(value) >= 1e12:
+                return f"{value/1e12:.1f}T"
+            elif abs(value) >= 1e9:
+                return f"{value/1e9:.1f}B"
+            elif abs(value) >= 1e6:
+                return f"{value/1e6:.1f}M"
+            elif abs(value) >= 1e3:
+                return f"{value/1e3:.1f}K"
+            else:
+                return f"{value:,.0f}"
+    except:
+        return str(value)
 
 def create_visualizations(df, query_type):
     """Create visualizations based on query type and data"""
@@ -187,6 +236,10 @@ def create_visualizations(df, query_type):
                         title="Dashboard Metrics"
                     )
                     fig.update_xaxis(tickangle=45)
+                    # Format y-axis with thousand separators
+                    fig.update_yaxis(tickformat=',.0f')
+                    # Format hover labels
+                    fig.update_traces(hovertemplate='%{x}: %{y:,.0f}<extra></extra>')
                     st.plotly_chart(fig, use_container_width=True)
         
         # Top regions/models queries
@@ -202,6 +255,13 @@ def create_visualizations(df, query_type):
                         title=f"{query_type.replace('_', ' ').title()} by {revenue_cols[0].replace('_', ' ').title()}"
                     )
                     fig.update_xaxis(tickangle=45)
+                    # Format y-axis with thousand separators
+                    if 'revenue' in revenue_cols[0].lower():
+                        fig.update_yaxis(tickformat='$,.0f')
+                        fig.update_traces(hovertemplate='%{x}: $%{y:,.0f}<extra></extra>')
+                    else:
+                        fig.update_yaxis(tickformat=',.0f')
+                        fig.update_traces(hovertemplate='%{x}: %{y:,.0f}<extra></extra>')
                     st.plotly_chart(fig, use_container_width=True)
         
         # Annual sales queries
@@ -215,6 +275,13 @@ def create_visualizations(df, query_type):
                         y=year_cols[0],
                         title="Annual Sales Trend"
                     )
+                    # Format y-axis with thousand separators
+                    if 'revenue' in year_cols[0].lower():
+                        fig.update_yaxis(tickformat='$,.0f')
+                        fig.update_traces(hovertemplate='%{x}: $%{y:,.0f}<extra></extra>')
+                    else:
+                        fig.update_yaxis(tickformat=',.0f')
+                        fig.update_traces(hovertemplate='%{x}: %{y:,.0f}<extra></extra>')
                     st.plotly_chart(fig, use_container_width=True)
         
         # Fuel/transmission performance
@@ -242,6 +309,9 @@ def create_visualizations(df, query_type):
                     title=f"{categorical_cols[0].replace('_', ' ').title()} vs {numeric_cols[0].replace('_', ' ').title()}"
                 )
                 fig.update_xaxis(tickangle=45)
+                # Format y-axis with thousand separators
+                fig.update_yaxis(tickformat=',.0f')
+                fig.update_traces(hovertemplate='%{x}: %{y:,.0f}<extra></extra>')
                 st.plotly_chart(fig, use_container_width=True)
             
             elif len(numeric_cols) > 1:
@@ -252,6 +322,10 @@ def create_visualizations(df, query_type):
                     y=numeric_cols[1],
                     title=f"{numeric_cols[0].replace('_', ' ').title()} vs {numeric_cols[1].replace('_', ' ').title()}"
                 )
+                # Format axes with thousand separators
+                fig.update_xaxis(tickformat=',.0f')
+                fig.update_yaxis(tickformat=',.0f')
+                fig.update_traces(hovertemplate='%{x:,.0f}, %{y:,.0f}<extra></extra>')
                 st.plotly_chart(fig, use_container_width=True)
     
     except Exception as e:
@@ -375,6 +449,7 @@ def main():
         available_queries = agent.get_available_queries()
         st.write(f"**{len(available_queries)} predefined queries available**")
         
+        
         # Example queries removed from sidebar
     
     # Main content based on selected page
@@ -466,7 +541,8 @@ def main():
         # Auto-execute when Enter is pressed (if query is not empty and different from last)
         if (user_query and user_query.strip() and 
             user_query.strip() != st.session_state.get('last_query', '') and
-            user_query.strip() != ''):
+            user_query.strip() != '' and
+            'example_query' not in st.session_state):
             with st.spinner("Processing your query..."):
                 result = agent.process_natural_language_query(user_query.strip())
                 st.session_state.last_result = result
@@ -488,15 +564,25 @@ def main():
                 disabled=True,
                 key="example_display"
             )
-            if st.button("Use this query"):
-                # Clear the example query and rerun
-                del st.session_state.example_query
-                st.rerun()
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("✅ Use this query"):
+                    # Set the query and execute it
+                    st.session_state.last_query = st.session_state.example_query
+                    with st.spinner("Processing your query..."):
+                        result = agent.process_natural_language_query(st.session_state.example_query)
+                        st.session_state.last_result = result
+                    del st.session_state.example_query
+                    st.rerun()
+            with col2:
+                if st.button("❌ Cancel"):
+                    del st.session_state.example_query
+                    st.rerun()
         
         # Display results
         if st.session_state.last_result:
             st.markdown("---")
-            display_query_result(st.session_state.last_result, st.session_state.last_query)
+            display_query_result(st.session_state.last_result, st.session_state.last_query, agent)
         
         # Example queries
         st.subheader("💡 Example Queries")
@@ -521,6 +607,7 @@ def main():
                     st.session_state.example_query = example
                     st.rerun()
     
+    
     elif page == "📋 Available Queries":
         st.header("📋 Available Predefined Queries")
         
@@ -533,7 +620,7 @@ def main():
             
             with st.spinner("Processing query..."):
                 result = agent.process_natural_language_query(st.session_state.selected_query)
-                display_query_result(result, st.session_state.selected_query)
+                display_query_result(result, st.session_state.selected_query, agent)
     
     elif page == "🗄️ Database Schema":
         st.header("🗄️ Database Schema Information")

@@ -9,6 +9,8 @@ from typing import Dict, List, Any, Optional, Tuple
 import logging
 from datetime import datetime
 
+# Chart Agent removed - focusing on SQL functionality only
+
 logger = logging.getLogger(__name__)
 
 class MCPAgentImproved:
@@ -40,7 +42,10 @@ class MCPAgentImproved:
                 r'(quais|mostre|exiba).*(top|melhores).*(regiões|região)',
                 r'(regiões|região).*(com mais|com maior).*(vendas|performance)',
                 r'(ranking|classificação).*(regiões|região)',
-                r'(top 5|top5|cinco melhores).*(regiões|região)'
+                r'(top 5|top5|cinco melhores).*(regiões|região)',
+                r'(quais).*(são|sao).*(as).*(top).*5.*(regiões|região)',
+                r'(quais).*(são|sao).*(as).*(top 5).*(regiões|região)',
+                r'(quais).*(são|sao).*(top 5).*(regiões|região)'
             ],
             
             'regional_performance': [
@@ -81,7 +86,9 @@ class MCPAgentImproved:
                 r'(tendências|trends).*(mensais|mensal|monthly|por mês)',
                 r'(mostre|exiba).*(tendências|trends).*(mensais|mensal)',
                 r'(evolução|histórico).*(mensal|por mês)',
-                r'(sazonalidade|sazonal).*(vendas|sales)'
+                r'(sazonalidade|sazonal).*(vendas|sales)',
+                r'(mostre|exiba).*(as).*(tendências|trends).*(mensais|mensal)',
+                r'(tendências|trends).*(mensais|mensal)'
             ],
             
             'annual_growth': [
@@ -89,6 +96,73 @@ class MCPAgentImproved:
                 r'(mostre|exiba).*(crescimento|growth).*(anual|por ano)',
                 r'(taxa|percentual).*(crescimento|growth)',
                 r'(aumento|redução).*(anual|por ano)'
+            ],
+            
+            # New advanced analysis patterns
+            'price_analysis': [
+                r'(análise|analise).*(preços|precos|preço|preco)',
+                r'(segmentação|segmentacao).*(preços|precos|preço|preco)',
+                r'(distribuição|distribuicao).*(preços|precos|preço|preco)',
+                r'(faixas|ranges).*(preços|precos|preço|preco)',
+                r'(preços|precos|preço|preco).*(por|por).*(modelo|região|regiao)',
+                r'(entry level|mid range|premium|luxury).*(modelos|modelo)'
+            ],
+            
+            'color_performance': [
+                r'(cores|cor).*(mais|top|melhores).*(vendidas|populares)',
+                r'(performance|desempenho).*(por|da|das).*(cores|cor)',
+                r'(análise|analise).*(cores|cor)',
+                r'(cores|cor).*(preferidas|favoritas|populares)',
+                r'(qual|quais).*(cores|cor).*(são|sao).*(mais).*(vendidas|populares)'
+            ],
+            
+            'model_efficiency': [
+                r'(eficiência|eficiencia).*(modelos|modelo)',
+                r'(relação|relacao).*(preço|preco).*(eficiência|eficiencia)',
+                r'(modelos|modelo).*(mais|melhor).*(eficientes|eficiente)',
+                r'(revenue per unit|receita por unidade)',
+                r'(price per liter|preço por litro)',
+                r'(análise|analise).*(eficiência|eficiencia)'
+            ],
+            
+            'seasonal_analysis': [
+                r'(sazonalidade|sazonal).*(por|da|das).*(região|regiao)',
+                r'(tendências|trends).*(sazonais|sazonal)',
+                r'(crescimento|growth).*(por|da|das).*(região|regiao)',
+                r'(análise|analise).*(sazonal|sazonalidade)',
+                r'(performance|desempenho).*(sazonal|sazonalidade)'
+            ],
+            
+            'top_performers': [
+                r'(top performers|melhores performers)',
+                r'(modelos|modelo).*(completos|completo)',
+                r'(ranking|classificação|classificacao).*(composto|completo)',
+                r'(múltiplas|multiplas).*(métricas|metricas)',
+                r'(score|pontuação|pontuacao).*(composto|completo)'
+            ],
+            
+            'price_volume_correlation': [
+                r'(correlação|correlacao).*(preço|preco).*(volume)',
+                r'(relação|relacao).*(preço|preco).*(vendas|volume)',
+                r'(análise|analise).*(correlação|correlacao)',
+                r'(preço|preco).*(vs|versus).*(volume|vendas)',
+                r'(high price high volume|low price high volume)'
+            ],
+            
+            'market_penetration': [
+                r'(penetração|penetracao).*(mercado|market)',
+                r'(cobertura|coverage).*(mercado|market)',
+                r'(diversidade|diversidade).*(produtos|produto)',
+                r'(modelos|modelo).*(disponíveis|disponiveis).*(por|da|das).*(região|regiao)',
+                r'(market share|participação|participacao).*(mercado|market)'
+            ],
+            
+            'temporal_trends': [
+                r'(tendências|trends).*(temporais|temporal)',
+                r'(evolução|evolucao).*(temporal|tempo)',
+                r'(histórico|historico).*(completo|completo)',
+                r'(análise|analise).*(temporal|tempo)',
+                r'(crescimento|growth).*(temporal|tempo)'
             ],
             
             # Year-based queries
@@ -216,15 +290,59 @@ class MCPAgentImproved:
         self.predefined_queries = {
             'dashboard': "SELECT * FROM analytics.kpi_executive_dashboard",
             'top_regions': "SELECT * FROM analytics.kpi_top_5_regions",
-            'top_models': "SELECT * FROM analytics.kpi_top_10_models LIMIT 5",
+            'top_models': "SELECT * FROM analytics.kpi_top_10_models LIMIT 10",
             'annual_sales': "SELECT * FROM analytics.kpi_annual_sales",
             'regional_performance': "SELECT * FROM analytics.kpi_regional_performance",
             'model_performance': "SELECT * FROM analytics.kpi_model_performance",
             'fuel_performance': "SELECT * FROM analytics.kpi_fuel_type_performance",
             'transmission_performance': "SELECT * FROM analytics.kpi_transmission_performance",
             'annual_growth': "SELECT * FROM analytics.kpi_annual_growth",
-            'year_analysis': "SELECT year, COUNT(DISTINCT model) as total_models, SUM(sales_volume) as total_sales FROM bmw_sales GROUP BY year ORDER BY total_sales DESC"
+            'year_analysis': "SELECT year, COUNT(DISTINCT model) as total_models, SUM(sales_volume) as total_sales FROM bmw_sales GROUP BY year ORDER BY total_sales DESC",
+            
+            # New advanced KPI queries
+            'price_analysis': "SELECT * FROM analytics.kpi_price_analysis",
+            'color_performance': "SELECT * FROM analytics.kpi_color_performance",
+            'model_efficiency': "SELECT * FROM analytics.kpi_model_efficiency",
+            'seasonal_analysis': "SELECT * FROM analytics.kpi_seasonal_analysis",
+            'top_performers': "SELECT * FROM analytics.kpi_top_performers",
+            'price_volume_correlation': "SELECT * FROM analytics.kpi_price_volume_correlation",
+            'market_penetration': "SELECT * FROM analytics.kpi_market_penetration",
+            'temporal_trends': "SELECT * FROM analytics.kpi_temporal_trends",
+            
+            # Count queries
+            'count_total': "SELECT COUNT(*) as total_records FROM bmw_sales",
+            'count_regions': "SELECT COUNT(DISTINCT region) as total_regions FROM bmw_sales",
+            'count_models': "SELECT COUNT(DISTINCT model) as total_models FROM bmw_sales",
+            'count_countries': "SELECT COUNT(DISTINCT country) as total_countries FROM bmw_sales",
+            
+            # Average queries
+            'average_price': "SELECT AVG(price_usd) as average_price FROM bmw_sales",
+            'average_sales': "SELECT AVG(sales_volume) as average_sales FROM bmw_sales",
+            'average_revenue': "SELECT AVG(price_usd * sales_volume) as average_revenue FROM bmw_sales",
+            'average_mileage': "SELECT AVG(mileage_km) as average_mileage FROM bmw_sales",
+            
+            # Sum queries
+            'sum_sales': "SELECT SUM(sales_volume) as total_sales FROM bmw_sales",
+            'sum_revenue': "SELECT SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales",
+            'sum_sales_value': "SELECT SUM(price_usd * sales_volume) as total_sales_value FROM bmw_sales",
+            
+            # Min/Max queries
+            'min_price': "SELECT MIN(price_usd) as min_price FROM bmw_sales",
+            'max_price': "SELECT MAX(price_usd) as max_price FROM bmw_sales",
+            'min_sales': "SELECT MIN(sales_volume) as min_sales FROM bmw_sales",
+            'max_sales': "SELECT MAX(sales_volume) as max_sales FROM bmw_sales",
+            
+            # Top performance queries
+            'top_region_revenue': "SELECT region, SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales GROUP BY region ORDER BY total_revenue DESC LIMIT 1",
+            'top_model_revenue': "SELECT model, SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales GROUP BY model ORDER BY total_revenue DESC LIMIT 1",
+            
+            # Specific model queries
+            'series_7': "SELECT * FROM bmw_sales WHERE model = '7 Series' ORDER BY sales_volume DESC LIMIT 10",
+            'series_3': "SELECT * FROM bmw_sales WHERE model = '3 Series' ORDER BY sales_volume DESC LIMIT 10",
+            'i8_sales': "SELECT * FROM bmw_sales WHERE model = 'i8' ORDER BY sales_volume DESC LIMIT 10"
         }
+        
+        # Chart Agent removed - focusing on SQL functionality only
         
         logger.info("Improved MCP Agent initialized")
     
@@ -263,6 +381,7 @@ class MCPAgentImproved:
                     'execution_time': (datetime.now() - start_time).total_seconds(),
                     'timestamp': datetime.now().isoformat()
                 }
+                
             else:
                 # Try to generate custom query
                 custom_sql = self._generate_custom_query_improved(normalized_query)
@@ -280,6 +399,7 @@ class MCPAgentImproved:
                         'execution_time': (datetime.now() - start_time).total_seconds(),
                         'timestamp': datetime.now().isoformat()
                     }
+                    
                 else:
                     response = {
                         'success': False,
@@ -335,8 +455,8 @@ class MCPAgentImproved:
         """Generate custom SQL query with improved logic"""
         # Enhanced keyword-based query generation
         
-        # Count queries
-        if any(word in query for word in ['conte', 'count', 'quantos', 'quantas', 'total']):
+        # Count queries - but check if it's actually a sum query first
+        if any(word in query for word in ['conte', 'count', 'quantos', 'quantas']) and not any(word in query for word in ['soma', 'sum', 'total']):
             if any(word in query for word in ['regiões', 'região', 'regions']):
                 return "SELECT COUNT(DISTINCT region) as total_regions FROM bmw_sales"
             elif any(word in query for word in ['modelos', 'modelo', 'models']):
@@ -351,24 +471,112 @@ class MCPAgentImproved:
         # Average queries
         elif any(word in query for word in ['média', 'media', 'average', 'avg']):
             if any(word in query for word in ['preço', 'preco', 'price']):
-                return "SELECT AVG(price_usd) as average_price FROM bmw_sales"
+                # Check if grouping is requested
+                if any(word in query for word in ['por', 'por cada', 'por modelo', 'por modelos', 'por região', 'por regiões', 'por ano', 'por anos']):
+                    if any(word in query for word in ['modelo', 'modelos']):
+                        return "SELECT model, AVG(price_usd) as average_price FROM bmw_sales GROUP BY model ORDER BY average_price DESC"
+                    elif any(word in query for word in ['região', 'regiões']):
+                        return "SELECT region, AVG(price_usd) as average_price FROM bmw_sales GROUP BY region ORDER BY average_price DESC"
+                    elif any(word in query for word in ['ano', 'anos']):
+                        return "SELECT year, AVG(price_usd) as average_price FROM bmw_sales GROUP BY year ORDER BY year"
+                    else:
+                        return "SELECT AVG(price_usd) as average_price FROM bmw_sales"
+                else:
+                    return "SELECT AVG(price_usd) as average_price FROM bmw_sales"
             elif any(word in query for word in ['vendas', 'sales', 'unidades']):
-                return "SELECT AVG(sales_volume) as average_sales FROM bmw_sales"
+                # Check if grouping is requested
+                if any(word in query for word in ['por', 'por cada', 'por modelo', 'por modelos', 'por região', 'por regiões', 'por ano', 'por anos']):
+                    if any(word in query for word in ['modelo', 'modelos']):
+                        return "SELECT model, AVG(sales_volume) as average_sales FROM bmw_sales GROUP BY model ORDER BY average_sales DESC"
+                    elif any(word in query for word in ['região', 'regiões']):
+                        return "SELECT region, AVG(sales_volume) as average_sales FROM bmw_sales GROUP BY region ORDER BY average_sales DESC"
+                    elif any(word in query for word in ['ano', 'anos']):
+                        return "SELECT year, AVG(sales_volume) as average_sales FROM bmw_sales GROUP BY year ORDER BY year"
+                    else:
+                        return "SELECT AVG(sales_volume) as average_sales FROM bmw_sales"
+                else:
+                    return "SELECT AVG(sales_volume) as average_sales FROM bmw_sales"
             elif any(word in query for word in ['receita', 'revenue']):
-                return "SELECT AVG(price_usd * sales_volume) as average_revenue FROM bmw_sales"
+                # Check if grouping is requested
+                if any(word in query for word in ['por', 'por cada', 'por modelo', 'por modelos', 'por região', 'por regiões', 'por ano', 'por anos']):
+                    if any(word in query for word in ['modelo', 'modelos']):
+                        return "SELECT model, AVG(price_usd * sales_volume) as average_revenue FROM bmw_sales GROUP BY model ORDER BY average_revenue DESC"
+                    elif any(word in query for word in ['região', 'regiões']):
+                        return "SELECT region, AVG(price_usd * sales_volume) as average_revenue FROM bmw_sales GROUP BY region ORDER BY average_revenue DESC"
+                    elif any(word in query for word in ['ano', 'anos']):
+                        return "SELECT year, AVG(price_usd * sales_volume) as average_revenue FROM bmw_sales GROUP BY year ORDER BY year"
+                    else:
+                        return "SELECT AVG(price_usd * sales_volume) as average_revenue FROM bmw_sales"
+                else:
+                    return "SELECT AVG(price_usd * sales_volume) as average_revenue FROM bmw_sales"
             elif any(word in query for word in ['quilometragem', 'mileage']):
-                return "SELECT AVG(mileage_km) as average_mileage FROM bmw_sales"
+                # Check if grouping is requested
+                if any(word in query for word in ['por', 'por cada', 'por modelo', 'por modelos', 'por região', 'por regiões', 'por ano', 'por anos']):
+                    if any(word in query for word in ['modelo', 'modelos']):
+                        return "SELECT model, AVG(mileage_km) as average_mileage FROM bmw_sales GROUP BY model ORDER BY average_mileage DESC"
+                    elif any(word in query for word in ['região', 'regiões']):
+                        return "SELECT region, AVG(mileage_km) as average_mileage FROM bmw_sales GROUP BY region ORDER BY average_mileage DESC"
+                    elif any(word in query for word in ['ano', 'anos']):
+                        return "SELECT year, AVG(mileage_km) as average_mileage FROM bmw_sales GROUP BY year ORDER BY year"
+                    else:
+                        return "SELECT AVG(mileage_km) as average_mileage FROM bmw_sales"
+                else:
+                    return "SELECT AVG(mileage_km) as average_mileage FROM bmw_sales"
         
-        # Sum queries
-        elif any(word in query for word in ['soma', 'sum', 'total']):
+        # Sum queries - prioritize sum/total over count
+        elif any(word in query for word in ['soma', 'sum']) or (any(word in query for word in ['total']) and any(word in query for word in ['vendas', 'sales', 'unidades', 'receita', 'revenue'])):
             if any(word in query for word in ['vendas', 'sales', 'unidades']):
-                return "SELECT SUM(sales_volume) as total_sales FROM bmw_sales"
+                # Check if grouping is requested
+                if any(word in query for word in ['por', 'por cada', 'por modelo', 'por modelos', 'por região', 'por regiões', 'por ano', 'por anos']):
+                    if any(word in query for word in ['modelo', 'modelos']):
+                        return "SELECT model, SUM(sales_volume) as total_sales FROM bmw_sales GROUP BY model ORDER BY total_sales DESC"
+                    elif any(word in query for word in ['região', 'regiões']):
+                        return "SELECT region, SUM(sales_volume) as total_sales FROM bmw_sales GROUP BY region ORDER BY total_sales DESC"
+                    elif any(word in query for word in ['ano', 'anos']):
+                        return "SELECT year, SUM(sales_volume) as total_sales FROM bmw_sales GROUP BY year ORDER BY year"
+                    else:
+                        return "SELECT SUM(sales_volume) as total_sales FROM bmw_sales"
+                else:
+                    return "SELECT SUM(sales_volume) as total_sales FROM bmw_sales"
             elif any(word in query for word in ['receita', 'revenue', 'faturamento']):
-                return "SELECT SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales"
+                # Check if grouping is requested
+                if any(word in query for word in ['por', 'por cada', 'por modelo', 'por modelos', 'por região', 'por regiões', 'por ano', 'por anos']):
+                    if any(word in query for word in ['modelo', 'modelos']):
+                        return "SELECT model, SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales GROUP BY model ORDER BY total_revenue DESC"
+                    elif any(word in query for word in ['região', 'regiões']):
+                        return "SELECT region, SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales GROUP BY region ORDER BY total_revenue DESC"
+                    elif any(word in query for word in ['ano', 'anos']):
+                        return "SELECT year, SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales GROUP BY year ORDER BY year"
+                    else:
+                        return "SELECT SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales"
+                else:
+                    return "SELECT SUM(price_usd * sales_volume) as total_revenue FROM bmw_sales"
             elif any(word in query for word in ['valor', 'value', 'total_sales']):
-                return "SELECT SUM(price_usd * sales_volume) as total_sales_value FROM bmw_sales"
+                # Check if grouping is requested
+                if any(word in query for word in ['por', 'por cada', 'por modelo', 'por modelos', 'por região', 'por regiões', 'por ano', 'por anos']):
+                    if any(word in query for word in ['modelo', 'modelos']):
+                        return "SELECT model, SUM(price_usd * sales_volume) as total_sales_value FROM bmw_sales GROUP BY model ORDER BY total_sales_value DESC"
+                    elif any(word in query for word in ['região', 'regiões']):
+                        return "SELECT region, SUM(price_usd * sales_volume) as total_sales_value FROM bmw_sales GROUP BY region ORDER BY total_sales_value DESC"
+                    elif any(word in query for word in ['ano', 'anos']):
+                        return "SELECT year, SUM(price_usd * sales_volume) as total_sales_value FROM bmw_sales GROUP BY year ORDER BY year"
+                    else:
+                        return "SELECT SUM(price_usd * sales_volume) as total_sales_value FROM bmw_sales"
+                else:
+                    return "SELECT SUM(price_usd * sales_volume) as total_sales_value FROM bmw_sales"
             else:
-                return "SELECT SUM(sales_volume) as total_sales FROM bmw_sales"
+                # Check if grouping is requested for generic sum
+                if any(word in query for word in ['por', 'por cada', 'por modelo', 'por modelos', 'por região', 'por regiões', 'por ano', 'por anos']):
+                    if any(word in query for word in ['modelo', 'modelos']):
+                        return "SELECT model, SUM(sales_volume) as total_sales FROM bmw_sales GROUP BY model ORDER BY total_sales DESC"
+                    elif any(word in query for word in ['região', 'regiões']):
+                        return "SELECT region, SUM(sales_volume) as total_sales FROM bmw_sales GROUP BY region ORDER BY total_sales DESC"
+                    elif any(word in query for word in ['ano', 'anos']):
+                        return "SELECT year, SUM(sales_volume) as total_sales FROM bmw_sales GROUP BY year ORDER BY year"
+                    else:
+                        return "SELECT SUM(sales_volume) as total_sales FROM bmw_sales"
+                else:
+                    return "SELECT SUM(sales_volume) as total_sales FROM bmw_sales"
         
         # Min/Max queries
         elif any(word in query for word in ['mínimo', 'minimo', 'min', 'menor']):
@@ -396,13 +604,31 @@ class MCPAgentImproved:
                 return "SELECT * FROM analytics.kpi_regional_performance"
             elif any(word in query for word in ['modelo', 'modelos']):
                 return "SELECT * FROM analytics.kpi_model_performance"
+            elif any(word in query for word in ['cor', 'cores']):
+                return "SELECT * FROM analytics.kpi_color_performance"
+            elif any(word in query for word in ['eficiência', 'eficiencia']):
+                return "SELECT * FROM analytics.kpi_model_efficiency"
+            elif any(word in query for word in ['sazonal', 'sazonalidade']):
+                return "SELECT * FROM analytics.kpi_seasonal_analysis"
         
         # Ranking queries
         elif any(word in query for word in ['ranking', 'classificação', 'top']):
             if any(word in query for word in ['modelo', 'modelos']):
-                return "SELECT * FROM analytics.kpi_top_10_models LIMIT 5"
+                # Check if specific number is mentioned
+                if any(word in query for word in ['10', 'dez']):
+                    return "SELECT * FROM analytics.kpi_top_10_models LIMIT 10"
+                elif any(word in query for word in ['5', 'cinco']):
+                    return "SELECT * FROM analytics.kpi_top_10_models LIMIT 5"
+                else:
+                    return "SELECT * FROM analytics.kpi_top_10_models LIMIT 10"
             elif any(word in query for word in ['região', 'regiões']):
-                return "SELECT * FROM analytics.kpi_top_5_regions"
+                # Check if specific number is mentioned for regions
+                if any(word in query for word in ['5', 'cinco']):
+                    return "SELECT * FROM analytics.kpi_top_5_regions"
+                elif any(word in query for word in ['10', 'dez']):
+                    return "SELECT * FROM analytics.kpi_top_5_regions LIMIT 10"
+                else:
+                    return "SELECT * FROM analytics.kpi_top_5_regions"
         
         # Year-based queries
         elif any(word in query for word in ['ano', 'anos', 'year']):
@@ -413,6 +639,39 @@ class MCPAgentImproved:
                     return "SELECT year, COUNT(DISTINCT model) as total_models, SUM(sales_volume) as total_sales FROM bmw_sales GROUP BY year ORDER BY year"
             elif any(word in query for word in ['qual', 'quais']):
                 return "SELECT year, COUNT(DISTINCT model) as total_models, SUM(sales_volume) as total_sales FROM bmw_sales GROUP BY year ORDER BY total_sales DESC LIMIT 1"
+            elif any(word in query for word in ['crescimento', 'growth']):
+                return "SELECT * FROM analytics.kpi_annual_growth"
+            elif any(word in query for word in ['vendas', 'sales']):
+                return "SELECT * FROM analytics.kpi_annual_sales"
+            else:
+                return "SELECT * FROM analytics.kpi_annual_sales"
+        
+        # Advanced analysis queries
+        elif any(word in query for word in ['preços', 'precos', 'preço', 'preco']):
+            if any(word in query for word in ['análise', 'analise', 'segmentação', 'segmentacao']):
+                return "SELECT * FROM analytics.kpi_price_analysis"
+            elif any(word in query for word in ['correlação', 'correlacao', 'volume']):
+                return "SELECT * FROM analytics.kpi_price_volume_correlation"
+            else:
+                return "SELECT * FROM analytics.kpi_price_analysis"
+        
+        elif any(word in query for word in ['cor', 'cores']):
+            return "SELECT * FROM analytics.kpi_color_performance"
+        
+        elif any(word in query for word in ['eficiência', 'eficiencia']):
+            return "SELECT * FROM analytics.kpi_model_efficiency"
+        
+        elif any(word in query for word in ['sazonal', 'sazonalidade']):
+            return "SELECT * FROM analytics.kpi_seasonal_analysis"
+        
+        elif any(word in query for word in ['top performers', 'melhores performers', 'múltiplas', 'multiplas']):
+            return "SELECT * FROM analytics.kpi_top_performers"
+        
+        elif any(word in query for word in ['penetração', 'penetracao', 'mercado', 'market']):
+            return "SELECT * FROM analytics.kpi_market_penetration"
+        
+        elif any(word in query for word in ['temporal', 'tempo', 'histórico', 'historico']):
+            return "SELECT * FROM analytics.kpi_temporal_trends"
         
         return None
     
@@ -456,7 +715,21 @@ class MCPAgentImproved:
             "Qual ano tem mais modelos vendidos?",
             "Quais são os anos com mais vendas?",
             "Mostre vendas por ano",
-            "Qual o melhor ano em vendas?"
+            "Qual o melhor ano em vendas?",
+            
+            # New advanced suggestions
+            "Análise de preços por segmento",
+            "Quais cores são mais vendidas?",
+            "Modelos mais eficientes",
+            "Análise sazonal por região",
+            "Top performers por múltiplas métricas",
+            "Correlação preço-volume",
+            "Penetração de mercado por região",
+            "Tendências temporais completas",
+            "Performance por cor",
+            "Eficiência dos modelos",
+            "Crescimento por região",
+            "Diversidade de produtos por região"
         ]
     
     def get_available_queries(self) -> Dict[str, str]:
@@ -475,6 +748,7 @@ class MCPAgentImproved:
             'year_analysis': 'Análise de vendas e modelos por ano'
         }
     
+
     def get_database_schema(self) -> Dict[str, Any]:
         """Get database schema information"""
         try:
