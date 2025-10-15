@@ -21,6 +21,12 @@ mcp_agent_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mcp_agent_module)
 NaturalLanguageSQLAgent = mcp_agent_module.NaturalLanguageSQLAgent
 
+# Import Orchestrator Agent (includes SQL + Visualization)
+spec_orch = importlib.util.spec_from_file_location("orchestrator_agent", os.path.join(os.path.dirname(__file__), '..', 'agents', 'orchestrator_agent.py'))
+orchestrator_module = importlib.util.module_from_spec(spec_orch)
+spec_orch.loader.exec_module(orchestrator_module)
+OrchestratorAgent = orchestrator_module.OrchestratorAgent
+
 # Import database config
 from config.database import test_connection
 
@@ -103,6 +109,22 @@ def initialize_sql_agent():
         
     except Exception as e:
         st.error(f"❌ Error initializing Natural Language SQL Agent: {e}")
+        return None
+
+@st.cache_resource
+def initialize_orchestrator_agent():
+    """Initialize Orchestrator Agent (SQL + Visualization)"""
+    try:
+        # Get AI provider from session state or default to OpenAI
+        ai_provider = st.session_state.get('ai_provider', 'openai')
+        
+        # Initialize orchestrator
+        orchestrator = OrchestratorAgent(ai_provider=ai_provider)
+        
+        return orchestrator
+        
+    except Exception as e:
+        st.error(f"❌ Error initializing Orchestrator Agent: {e}")
         return None
 
 def get_confidence_color(confidence):
@@ -402,6 +424,9 @@ def main():
     if not agent:
         st.stop()
     
+    # Initialize Orchestrator Agent
+    orchestrator = initialize_orchestrator_agent()
+    
     # Sidebar
     with st.sidebar:
         st.header("🔧 Navigation")
@@ -409,8 +434,21 @@ def main():
         # Navigation
         page = st.selectbox(
             "Select Page",
-            ["🏠 Dashboard", "💬 Natural Language Query", "📋 Available Queries", "🗄️ Database Schema", "📊 Query History"]
+            ["🏠 Dashboard", "💬 Natural Language Query", "📊 AI Visualization", "📋 Available Queries", "🗄️ Database Schema", "📜 Query History"]
         )
+        
+        # AI Provider Selection
+        st.header("🤖 AI Provider")
+        ai_provider = st.selectbox(
+            "Select AI Provider",
+            ["openai", "anthropic"],
+            index=0,
+            help="Choose which AI provider to use for query processing"
+        )
+        if 'ai_provider' not in st.session_state or st.session_state.ai_provider != ai_provider:
+            st.session_state.ai_provider = ai_provider
+            # Clear cache to reinitialize with new provider
+            st.cache_resource.clear()
         
         # Database connection status
         st.header("🔗 Connection Status")
@@ -625,13 +663,210 @@ def main():
         
         display_database_schema(agent)
     
-    elif page == "📊 Query History":
-        st.header("📊 Query History")
+    elif page == "📊 AI Visualization":
+        st.header("📊 AI-Powered Visualization")
+        
+        st.info("💡 **Novo!** Agora você pode criar visualizações personalizadas usando linguagem natural!")
+        
+        # Initialize session state for visualization
+        if 'viz_last_data' not in st.session_state:
+            st.session_state.viz_last_data = None
+        if 'viz_last_result' not in st.session_state:
+            st.session_state.viz_last_result = None
+        
+        # Two modes: Query + Viz, or Viz from existing data
+        mode = st.radio(
+            "Modo de Visualização:",
+            ["🔄 Consulta + Visualização", "🎨 Visualizar Dados Existentes"],
+            help="Escolha se quer buscar dados e visualizar, ou apenas criar visualizações de dados já consultados"
+        )
+        
+        if mode == "🔄 Consulta + Visualização":
+            st.subheader("Consulta com Visualização Automática")
+            
+            # Query input
+            viz_query = st.text_input(
+                "Digite sua pergunta (pode incluir o tipo de gráfico desejado):",
+                placeholder="Ex: Mostre um gráfico de barras das vendas por região",
+                key="viz_query_input"
+            )
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🚀 Executar", type="primary", key="execute_viz"):
+                    if viz_query and viz_query.strip():
+                        with st.spinner("Processando consulta e gerando visualização..."):
+                            result = orchestrator.process_query(viz_query.strip())
+                            st.session_state.viz_last_result = result
+                            
+                            # Save data for later reuse
+                            if result.get('success') and result.get('data'):
+                                st.session_state.viz_last_data = pd.DataFrame(result['data'])
+                            
+                            st.rerun()
+                    else:
+                        st.warning("⚠️ Por favor, digite uma consulta")
+            
+            with col2:
+                if st.button("🔄 Limpar", key="clear_viz"):
+                    st.session_state.viz_last_result = None
+                    st.session_state.viz_last_data = None
+                    st.rerun()
+            
+            # Display results
+            if st.session_state.viz_last_result:
+                result = st.session_state.viz_last_result
+                
+                if result['success']:
+                    st.success("✅ Consulta executada com sucesso!")
+                    
+                    # Display SQL results
+                    if 'sql_result' in result:
+                        st.subheader("📊 Dados")
+                        with st.expander("Ver SQL Query"):
+                            st.code(result['sql_result'].get('sql_query', ''), language='sql')
+                        
+                        if result.get('data'):
+                            df = pd.DataFrame(result['data'])
+                            st.dataframe(df, use_container_width=True)
+                    
+                    # Display visualization
+                    if 'visualization_result' in result:
+                        viz_result = result['visualization_result']
+                        
+                        if viz_result['success']:
+                            st.subheader("📈 Visualização")
+                            
+                            # Display chart
+                            import base64
+                            img_data = base64.b64decode(viz_result['image_base64'])
+                            st.image(img_data, use_column_width=True)
+                            
+                            # Chart info
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Tipo de Gráfico", viz_result['chart_type'].title())
+                            with col2:
+                                st.metric("Tempo de Execução", f"{viz_result['execution_time']:.3f}s")
+                            with col3:
+                                st.metric("AI Provider", result['ai_provider'].upper())
+                            
+                            # Show generated code
+                            with st.expander("📝 Ver Código Python"):
+                                st.code(viz_result.get('chart_code', ''), language='python')
+                        else:
+                            st.error(f"❌ Erro ao gerar visualização: {viz_result.get('error', 'Unknown')}")
+                else:
+                    st.error(f"❌ Erro: {result.get('error', 'Unknown error')}")
+            
+            # Example queries
+            st.subheader("💡 Exemplos de Consultas com Visualização")
+            example_viz_queries = [
+                "Mostre um gráfico de barras das vendas por região",
+                "Crie um gráfico de linha da receita ao longo dos anos",
+                "Faça um gráfico de dispersão entre preço e vendas dos modelos",
+                "Mostre um gráfico de pizza das vendas por tipo de combustível",
+                "Crie um heatmap de correlação entre as variáveis numéricas"
+            ]
+            
+            cols = st.columns(2)
+            for i, example in enumerate(example_viz_queries):
+                with cols[i % 2]:
+                    if st.button(f"📊 {example}", key=f"viz_example_{i}"):
+                        st.session_state.viz_query_example = example
+                        st.rerun()
+        
+        else:  # Visualizar Dados Existentes
+            st.subheader("Criar Visualização de Dados Existentes")
+            
+            if st.session_state.viz_last_data is not None and not st.session_state.viz_last_data.empty:
+                st.info(f"✅ Dados carregados: {len(st.session_state.viz_last_data)} linhas, {len(st.session_state.viz_last_data.columns)} colunas")
+                
+                # Show data preview
+                with st.expander("👀 Visualizar Dados"):
+                    st.dataframe(st.session_state.viz_last_data.head(10), use_container_width=True)
+                
+                # Get visualization suggestions
+                if orchestrator:
+                    suggestions = orchestrator.suggest_visualizations(st.session_state.viz_last_data)
+                    
+                    if suggestions:
+                        st.subheader("💡 Visualizações Sugeridas")
+                        
+                        cols = st.columns(2)
+                        for i, suggestion in enumerate(suggestions):
+                            with cols[i % 2]:
+                                if st.button(
+                                    f"📊 {suggestion['type'].upper()}: {suggestion['description']}",
+                                    key=f"suggestion_{i}"
+                                ):
+                                    # Generate visualization
+                                    with st.spinner("Gerando visualização..."):
+                                        viz_result = orchestrator.process_query_with_data(
+                                            query=suggestion['query'],
+                                            data=st.session_state.viz_last_data
+                                        )
+                                        
+                                        if viz_result['success']:
+                                            viz = viz_result['visualization_result']
+                                            
+                                            # Display chart
+                                            import base64
+                                            img_data = base64.b64decode(viz['image_base64'])
+                                            st.image(img_data, use_column_width=True)
+                                            
+                                            st.success(f"✅ {viz['title']}")
+                
+                # Custom visualization query
+                st.subheader("🎨 Criar Visualização Personalizada")
+                custom_viz_query = st.text_input(
+                    "Descreva o gráfico que você quer criar:",
+                    placeholder="Ex: Gráfico de barras empilhadas por região e ano",
+                    key="custom_viz_query"
+                )
+                
+                if st.button("🎨 Criar Visualização", type="primary"):
+                    if custom_viz_query:
+                        with st.spinner("Criando visualização..."):
+                            viz_result = orchestrator.process_query_with_data(
+                                query=custom_viz_query,
+                                data=st.session_state.viz_last_data
+                            )
+                            
+                            if viz_result['success']:
+                                viz = viz_result['visualization_result']
+                                
+                                # Display chart
+                                import base64
+                                img_data = base64.b64decode(viz['image_base64'])
+                                st.image(img_data, use_column_width=True)
+                                
+                                # Chart info
+                                col1, col2, col3 = st.columns(3)
+                                with col1:
+                                    st.metric("Tipo de Gráfico", viz['chart_type'].title())
+                                with col2:
+                                    st.metric("Título", viz['title'])
+                                with col3:
+                                    st.metric("Tempo", f"{viz['execution_time']:.3f}s")
+                                
+                                # Show code
+                                with st.expander("📝 Ver Código Python"):
+                                    st.code(viz.get('chart_code', ''), language='python')
+                            else:
+                                st.error(f"❌ Erro: {viz_result.get('error', 'Unknown')}")
+                    else:
+                        st.warning("⚠️ Descreva a visualização desejada")
+            else:
+                st.warning("⚠️ Nenhum dado disponível. Execute uma consulta primeiro no modo 'Consulta + Visualização'.")
+    
+    elif page == "📜 Query History":
+        st.header("📜 Query History")
         
         st.info("Query history feature will be implemented in future versions.")
         
         # Placeholder for query history
-        st.subheader("📜 Recent Queries")
+        st.subheader("📊 Recent Queries")
         
         # Show some example queries
         example_queries = [

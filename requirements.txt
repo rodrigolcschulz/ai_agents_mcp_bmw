@@ -26,8 +26,11 @@ mcp==1.15.0
 streamlit>=1.28.2
 plotly>=5.17.0
 altair>=5.2.0
+
+# Visualization (for AI Visualization Agent)
 matplotlib>=3.7.2
 seaborn>=0.12.2
+pillow>=10.0.0
 
 # Utilities
 requests>=2.31.0

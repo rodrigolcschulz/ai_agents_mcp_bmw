@@ -24,7 +24,8 @@ class NaturalLanguageSQLAgent:
             'database': os.getenv('POSTGRES_DB', 'ai_data_engineering'),
             'user': os.getenv('POSTGRES_USER', 'postgres'),
             'password': os.getenv('POSTGRES_PASSWORD', 'postgres123'),
-            'client_encoding': 'utf8'
+            'client_encoding': 'UTF8',
+            'options': '-c client_encoding=UTF8'
         }
         
         # Enhanced query patterns with better recognition

@@ -55,6 +55,7 @@ class AISQLAgent:
         """Get comprehensive database schema information"""
         try:
             conn = psycopg2.connect(**self.DB_CONFIG)
+            conn.set_client_encoding('UTF8')
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             
             schema_info = {
@@ -177,6 +178,7 @@ IMPORTANT RULES:
 10. Use proper JOINs when needed
 11. Handle NULL values appropriately
 12. Use proper date/time functions for temporal queries
+13. **IMPORTANT**: If the query mentions "gráfico", "chart", "visualização", "visualization", or similar terms, IGNORE those words and focus on generating SQL to retrieve the underlying data. SQL cannot create graphics - just return the data needed for the visualization.
 
 Common patterns:
 - "top X" or "melhores X" → ORDER BY ... DESC LIMIT X
@@ -186,6 +188,14 @@ Common patterns:
 - "por região" → GROUP BY region
 - "por ano" → GROUP BY year
 - "por modelo" → GROUP BY model
+
+Visualization queries (ignore "gráfico", "chart" keywords and focus on data):
+- "mostre um gráfico de barras por região" → SELECT * FROM analytics.kpi_regional_performance ORDER BY total_revenue DESC
+- "crie um gráfico de linha por ano" → SELECT * FROM analytics.kpi_annual_sales ORDER BY year
+- "faça um gráfico de pizza por modelo" → SELECT model, total_units_sold FROM analytics.kpi_model_performance ORDER BY total_units_sold DESC LIMIT 10
+- "gráfico de vendas por tipo de combustível" → SELECT * FROM analytics.kpi_fuel_type_performance ORDER BY total_revenue DESC
+
+IMPORTANT: When user asks for visualizations/charts, use analytics views when available. The visualization will be created by another agent - you just need to provide the data.
 """
                     },
                     {
@@ -237,6 +247,7 @@ IMPORTANT RULES:
 10. Use proper JOINs when needed
 11. Handle NULL values appropriately
 12. Use proper date/time functions for temporal queries
+13. **IMPORTANT**: If the query mentions "gráfico", "chart", "visualização", "visualization", or similar terms, IGNORE those words and focus on generating SQL to retrieve the underlying data. SQL cannot create graphics - just return the data needed for the visualization.
 
 Common patterns:
 - "top X" or "melhores X" → ORDER BY ... DESC LIMIT X
@@ -246,6 +257,14 @@ Common patterns:
 - "por região" → GROUP BY region
 - "por ano" → GROUP BY year
 - "por modelo" → GROUP BY model
+
+Visualization queries (ignore "gráfico", "chart" keywords and focus on data):
+- "mostre um gráfico de barras por região" → SELECT * FROM analytics.kpi_regional_performance ORDER BY total_revenue DESC
+- "crie um gráfico de linha por ano" → SELECT * FROM analytics.kpi_annual_sales ORDER BY year
+- "faça um gráfico de pizza por modelo" → SELECT model, total_units_sold FROM analytics.kpi_model_performance ORDER BY total_units_sold DESC LIMIT 10
+- "gráfico de vendas por tipo de combustível" → SELECT * FROM analytics.kpi_fuel_type_performance ORDER BY total_revenue DESC
+
+IMPORTANT: When user asks for visualizations/charts, use analytics views when available. The visualization will be created by another agent - you just need to provide the data.
 """,
                 messages=[
                     {
@@ -275,6 +294,7 @@ Common patterns:
         """Execute SQL query and return results"""
         try:
             conn = psycopg2.connect(**self.DB_CONFIG)
+            conn.set_client_encoding('UTF8')
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             
             cursor.execute(sql_query)
